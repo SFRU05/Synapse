@@ -26,6 +26,10 @@ async def ping(ctx):
     embed = discord.Embed(title="🏓 Pong!", description=f"현재 핑: {latency}ms", color=discord.Color.green())
     await ctx.send(embed=embed)
 
+@bot.command()
+async def test(ctx):
+    await ctx.send('hello')
+
 # clear 명령어 - 지정한 개수만큼 메시지 삭제
 @bot.command()
 async def clear(ctx, amount: int = None):
