@@ -3,7 +3,11 @@ from discord.ext import commands
 import music
 import os
 from dotenv import load_dotenv
+from itertools import cycle
+from discord.ext import tasks
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
+
+status = cycle(["1번 메시지", "2번 메시지", "3번 메시지"])
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +22,11 @@ bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_comma
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
-    await bot.change_presence(activity=discord.Game(name="서버 관리"))
+    change_status.start()
+
+@tasks.loop(seconds=5) # n초마다 다음 메시지 출력
+async def change_status():
+    await bot.change_presence(activity=discord.Game(next(status)))
 
 @bot.command()
 async def ping(ctx):
