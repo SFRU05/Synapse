@@ -36,6 +36,8 @@ async def clear(ctx, amount: int = None):
     deleted = await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"요청 **{amount}**개 중 **{len(deleted)}개**의 메시지를 삭제했습니다.")
 
+
+
 @bot.command()
 async def help(ctx):
     embed = discord.Embed(title="도움말", description="사용 가능한 명령어 목록입니다.", color=discord.Color.blue())
