@@ -7,7 +7,7 @@ from itertools import cycle
 from discord.ext import tasks
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
 
-status = cycle(["1번 메시지", "2번 메시지", "3번 메시지"])
+status = cycle(["서버 관리", "음악 듣기", "멍때리기"])
 
 intents = discord.Intents.default()
 intents.message_content = True

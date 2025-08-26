@@ -2,7 +2,6 @@ import discord
 import yt_dlp
 import asyncio
 
-
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'quiet': True,
@@ -125,4 +124,3 @@ def setup(bot):
 
             embed = discord.Embed(title="🎵 현재 큐", description=description, color=discord.Color.blue())
             await ctx.send(embed=embed)
-
