@@ -1,13 +1,18 @@
 import discord
 from discord.ext import commands
-import music
 import os
+from help import send_help
+from moderation.kick import setup_kick_command
 from dotenv import load_dotenv
 from itertools import cycle
 from discord.ext import tasks
+from discord_buttons_plugin import *
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
 
 status = cycle(["서버 관리", "음악 듣기", "멍때리기"])
+
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
+buttons = ButtonsClient(bot)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -16,13 +21,13 @@ intents.members = True
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
 
-bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
-
 # 봇이 준비되었을 떄 나오는 상태메시지
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
+    await setup_kick_command(bot) #Kick 명령어 실행
     change_status.start()
+
 
 @tasks.loop(seconds=5) # n초마다 다음 메시지 출력
 async def change_status():
@@ -34,10 +39,6 @@ async def ping(ctx):
     embed = discord.Embed(title="🏓 Pong!", description=f"현재 핑: {latency}ms", color=discord.Color.green())
     await ctx.send(embed=embed)
 
-@bot.command()
-async def test(ctx):
-    await ctx.send('hello')
-
 # clear 명령어 - 지정한 개수만큼 메시지 삭제
 @bot.command()
 async def clear(ctx, amount: int = None):
@@ -46,22 +47,12 @@ async def clear(ctx, amount: int = None):
         return
     await ctx.channel.purge(limit=amount + 1)
     deleted = await ctx.channel.purge(limit=amount + 1)
-    await ctx.send(f"요청 **{amount}**개 중 **{len(deleted)}개**의 메시지를 삭제했습니다.")
+    await ctx.send(f"요청 **{amount}**개 중 **{len(deleted) - 1}개**의 메시지를 삭제했습니다.")
 
-
-
+# help 명령어
 @bot.command()
-async def help(ctx):
-    embed = discord.Embed(title="도움말", description="사용 가능한 명령어 목록입니다.", color=discord.Color.blue())
-    embed.add_field(name="-join", value="봇을 음성 채널에 참여시킵니다.", inline=False)
-    embed.add_field(name="-leave", value="봇을 음성 채널에서 나가게 합니다.", inline=False)
-    embed.add_field(name="-play <URL>", value="지정한 URL의 음악을 재생합니다.", inline=False)
-    embed.add_field(name="-skip", value="현재 재생 중인 곡을 스킵합니다.", inline=False)
-    embed.add_field(name="-queue", value="현재 대기열을 확인합니다.", inline=False)
-    embed.add_field(name="-stop", value="음악을 정지하고 대기열을 비웁니다.", inline=False)
-    embed.add_field(name="-clear <개수>", value="지정한 개수만큼 메시지를 삭제합니다.", inline=False)
-    embed.add_field(name="-ping", value="봇의 응답 속도를 확인합니다.", inline=False)
-    await ctx.send(embed=embed)
+async def help(ctx, category: str = None):
+    await send_help(ctx, category)
 
 # 서버 로그 표시
 @bot.event
@@ -85,5 +76,4 @@ async def on_message_edit(before, after):
     await log_message_edit(before, after) # 메시지가 수정되었을 때 로그
 
 if __name__ == "__main__":
-    music.setup(bot)
     bot.run(TOKEN)
