@@ -3,6 +3,9 @@ from discord.ext import commands
 import os
 from help import send_help
 from moderation.kick import setup_kick_command
+from moderation.timeout import pardon_timeout
+from moderation.timeout import setup_timeout_command
+from moderation.ban import setup_ban_command
 from dotenv import load_dotenv
 from itertools import cycle
 from discord.ext import tasks
@@ -25,9 +28,11 @@ TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
-    await setup_kick_command(bot) #Kick 명령어 실행
+    await setup_kick_command(bot) # Kick 명령어 실행
+    await setup_ban_command(bot) # Ban 명령어 실행
+    await setup_timeout_command(bot) # Timeout 명령어 실행
+    await pardon_timeout(bot)
     change_status.start()
-
 
 @tasks.loop(seconds=5) # n초마다 다음 메시지 출력
 async def change_status():

@@ -23,6 +23,9 @@ async def send_help(ctx, category: str = None):
     elif category == "관리":
         embed = discord.Embed(title="관리 명령어", description="관리 명령어 목록입니다.", color=discord.Color.red())
         embed.add_field(name="-kick <유저 멘션 / ID 입력> <사유>", value="해당 유저를 추방합니다.", inline=False)
+        embed.add_field(name="-ban <개수>", value="지정한 개수만큼 메시지를 삭제합니다.", inline=False)
+        embed.add_field(name="-timeout <유저 멘션 / ID 입력> <시간(분)> <사유>", value="입력한 시간만큼 사용자를 타임아웃합니다.", inline=False)
+        embed.add_field(name="-pardon <유저 멘션 / ID 입력>", value="해당 유저의 타임아웃을 해제합니다.", inline=False)
         embed.add_field(name="-clear <개수>", value="지정한 개수만큼 메시지를 삭제합니다.", inline=False)
         await ctx.send(embed=embed)
     else:
