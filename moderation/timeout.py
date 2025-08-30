@@ -47,11 +47,13 @@ async def setup_timeout_command(bot):
 
                     embed = discord.Embed(
                         title="타임아웃 완료",
-                        description=f"{member.mention} 님이 {int(hours)}시간 {int(minutes)}분 동안 타임아웃되었습니다.",
+                        description=f"{member.mention} 님이 타임아웃되었습니다.",
                         color=discord.Color.green()
                     )
+                    embed.add_field(name="기간", value=f"{int(hours)}시간 {int(minutes)}분", inline=True)
+                    embed.add_field(name="중재자", value=f"{ctx.author.mention}", inline=True)
                     embed.add_field(name="사유", value=reason, inline=False)
-                    embed.add_field(name="중재자", value=f"{ctx.author.mention}", inline=False)
+
 
                     await ctx.send(embed=embed)
                 except discord.Forbidden:

@@ -1,3 +1,5 @@
+### 2025-08-30 LavaLink로 수정 예정
+
 import discord
 import yt_dlp
 import asyncio
