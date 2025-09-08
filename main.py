@@ -11,7 +11,6 @@ from itertools import cycle
 from discord.ext import tasks
 from random_draw import RandomDraw
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
-import music
 
 status = cycle(["서버 관리", "음악 듣기", "멍때리기"])
 
@@ -33,7 +32,6 @@ async def on_ready():
     await setup_timeout_command(bot) # Timeout 명령어 실행
     await pardon_timeout(bot)
     await bot.add_cog(RandomDraw(bot))
-    music.setup(bot)
     change_status.start()
 
 @tasks.loop(seconds=5) # n초마다 다음 메시지 출력
