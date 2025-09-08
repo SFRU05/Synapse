@@ -51,7 +51,8 @@ async def setup_timeout_command(bot):
                         color=discord.Color.green()
                     )
                     embed.add_field(name="기간", value=f"{int(hours)}시간 {int(minutes)}분", inline=True)
-                    embed.add_field(name="중재자", value=f"{ctx.author.mention}", inline=True)
+                    embed.add_field(name="중재자", value=f"{ctx.author.mention}", inline=True
+                                    )
                     embed.add_field(name="사유", value=reason, inline=False)
 
 

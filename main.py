@@ -9,13 +9,13 @@ from moderation.ban import setup_ban_command
 from dotenv import load_dotenv
 from itertools import cycle
 from discord.ext import tasks
-from discord_buttons_plugin import *
+from random_draw import RandomDraw
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
+import music
 
 status = cycle(["서버 관리", "음악 듣기", "멍때리기"])
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
-buttons = ButtonsClient(bot)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -32,6 +32,8 @@ async def on_ready():
     await setup_ban_command(bot) # Ban 명령어 실행
     await setup_timeout_command(bot) # Timeout 명령어 실행
     await pardon_timeout(bot)
+    await bot.add_cog(RandomDraw(bot))
+    music.setup(bot)
     change_status.start()
 
 @tasks.loop(seconds=5) # n초마다 다음 메시지 출력
@@ -79,6 +81,43 @@ async def on_member_update(before, after):
 @bot.event
 async def on_message_edit(before, after):
     await log_message_edit(before, after) # 메시지가 수정되었을 때 로그
+
+@bot.event
+async def on_message_edit(before, after):
+    await log_message_edit(before, after)
+
+user_data = {}  # {user_id: {'exp': int, 'level': int}}
+
+def get_level(exp):
+    return exp // 100 + 1  # 100exp마다 레벨업
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    user_id = message.author.id
+    if user_id not in user_data:
+        user_data[user_id] = {'exp': 0, 'level': 1}
+
+    user_data[user_id]['exp'] += 10  # 메시지마다 10exp
+    user_data[user_id]['level'] = get_level(user_data[user_id]['exp'])
+
+    await bot.process_commands(message)  # 명령어 처리
+
+@bot.command(name="level")
+async def level(ctx):
+    user_id = ctx.author.id
+    data = user_data.get(user_id, {'exp': 0, 'level': 1})
+    embed = discord.Embed(
+        title="경험치 및 레벨",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="레벨", value=f"**{data['level']}**", inline=False)
+    embed.add_field(name="경험치", value=f"**{data['exp']} EXP**", inline=False)
+    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    await ctx.send(embed=embed)
+
 
 if __name__ == "__main__":
     bot.run(TOKEN)
