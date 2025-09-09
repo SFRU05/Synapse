@@ -1,6 +1,9 @@
 import discord
 from discord.ext import commands
 import os
+import time
+import datetime
+import sys
 from help import send_help
 from moderation.kick import setup_kick_command
 from moderation.timeout import pardon_timeout
@@ -84,36 +87,32 @@ async def on_message_edit(before, after):
 async def on_message_edit(before, after):
     await log_message_edit(before, after)
 
-user_data = {}  # {user_id: {'exp': int, 'level': int}}
+start_time = time.time()
 
-def get_level(exp):
-    return exp // 100 + 1  # 100exp마다 레벨업
+@bot.command(name="info")
+async def info(ctx):
+    current_time = time.time()
+    uptime_seconds = int(current_time - start_time)
+    hours, remainder = divmod(uptime_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    uptime_str = f"{hours}시간 {minutes}분 {seconds}초"
+    python_version = sys.version.split()[0]
+    discord_version = discord.__version__
 
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    user_id = message.author.id
-    if user_id not in user_data:
-        user_data[user_id] = {'exp': 0, 'level': 1}
-
-    user_data[user_id]['exp'] += 10  # 메시지마다 10exp
-    user_data[user_id]['level'] = get_level(user_data[user_id]['exp'])
-
-    await bot.process_commands(message)  # 명령어 처리
-
-@bot.command(name="level")
-async def level(ctx):
-    user_id = ctx.author.id
-    data = user_data.get(user_id, {'exp': 0, 'level': 1})
     embed = discord.Embed(
-        title="경험치 및 레벨",
-        color=discord.Color.blue()
+        title="봇 정보",
+        color=discord.Color.purple(),
+        timestamp=datetime.datetime.now(datetime.UTC)
     )
-    embed.add_field(name="레벨", value=f"**{data['level']}**", inline=False)
-    embed.add_field(name="경험치", value=f"**{data['exp']} EXP**", inline=False)
-    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    embed.add_field(name="이름", value=bot.user.name, inline=True)
+    embed.add_field(name="ID", value=bot.user.id, inline=True)
+    embed.add_field(name="업타임", value=uptime_str, inline=False)
+    embed.add_field(name="사용 언어", value='`Python`', inline=True)
+    embed.add_field(name="버전", value=python_version, inline=True)
+    embed.add_field(name="API 버전", value=discord_version, inline=True)
+    embed.set_footer(text="Synapse")
+    if bot.user.avatar:
+        embed.set_thumbnail(url=bot.user.avatar.url)
     await ctx.send(embed=embed)
 
 

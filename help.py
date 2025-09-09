@@ -11,6 +11,7 @@ async def send_help(ctx, category: str = None):
         embed = discord.Embed(title="일반 명령어", description="일반 명령어 목록입니다.", color=discord.Color.green())
         embed.add_field(name="-ping", value="봇의 응답 속도를 확인합니다.", inline=False)
         embed.add_field(name="-draw <추첨인원 수> <추첨인원 1> <추첨인원 2>...", value="랜덤 추첨기를 실행합니다. (항목별 띄어쓰기 필수)", inline=False)
+        embed.add_field(name="-info", value="봇의 정보를 불러옵니다.", inline=False)
         await ctx.send(embed=embed)
     elif category == "음악":
         embed = discord.Embed(title="음악 명령어 (일시적 사용 불가)", description="음악 명령어 목록입니다.", color=discord.Color.orange())
