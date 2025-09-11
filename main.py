@@ -16,7 +16,7 @@ from discord.ext import tasks
 from random_draw import RandomDraw
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
 
-bot = commands.Bot(command_prefix="=", intents=discord.Intents.all(), help_command=None) # 접두사
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
 
 def get_status_list():
     return [
