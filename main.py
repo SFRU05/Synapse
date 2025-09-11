@@ -1,10 +1,11 @@
 import discord
 from discord.ext import commands
 import os
-import time
-import datetime
-import sys
 from help import send_help
+from infomations.bot_info import send_bot_info
+from infomations.server_info import send_server_info
+from infomations.user_info import send_user_info
+from infomations.avatar_info import avatar
 from moderation.kick import setup_kick_command
 from moderation.timeout import pardon_timeout
 from moderation.timeout import setup_timeout_command
@@ -15,9 +16,15 @@ from discord.ext import tasks
 from random_draw import RandomDraw
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
 
-status = cycle(["서버 관리", "음악 듣기", "멍때리기"])
+bot = commands.Bot(command_prefix="=", intents=discord.Intents.all(), help_command=None) # 접두사
 
-bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
+def get_status_list():
+    return [
+        "서버 관리",
+        "음악 듣기",
+        f"노는 중"]
+
+status = cycle(get_status_list())
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -62,6 +69,31 @@ async def clear(ctx, amount: int = None):
 async def help(ctx, category: str = None):
     await send_help(ctx, category)
 
+@bot.command(name="info")
+async def info(ctx):
+    await send_bot_info(ctx, bot)
+
+@bot.command(name="serverinfo")
+async def server_info(ctx):
+    await send_server_info(ctx)
+
+@bot.command(name="userinfo")
+async def user_info(ctx, member: discord.Member = None):
+    await send_user_info(ctx, member)
+
+@bot.command(name="avatar")
+async def avatar_info(ctx, member: discord.Member = None):
+    await avatar(ctx, member)
+
+@bot.command(name="log")
+async def log_command(ctx):
+    embed = discord.Embed(
+        title="로그 설정 방법",
+        description="#logs 채팅 채널을 생성하세요.",
+        color=discord.Color.orange()
+    )
+    await ctx.send(embed=embed)
+
 # 서버 로그 표시
 @bot.event
 async def on_message_delete(message):
@@ -86,35 +118,6 @@ async def on_message_edit(before, after):
 @bot.event
 async def on_message_edit(before, after):
     await log_message_edit(before, after)
-
-start_time = time.time()
-
-@bot.command(name="info")
-async def info(ctx):
-    current_time = time.time()
-    uptime_seconds = int(current_time - start_time)
-    hours, remainder = divmod(uptime_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    uptime_str = f"{hours}시간 {minutes}분 {seconds}초"
-    python_version = sys.version.split()[0]
-    discord_version = discord.__version__
-
-    embed = discord.Embed(
-        title="봇 정보",
-        color=discord.Color.purple(),
-        timestamp=datetime.datetime.now(datetime.UTC)
-    )
-    embed.add_field(name="이름", value=bot.user.name, inline=True)
-    embed.add_field(name="ID", value=bot.user.id, inline=True)
-    embed.add_field(name="업타임", value=uptime_str, inline=False)
-    embed.add_field(name="사용 언어", value='`Python`', inline=True)
-    embed.add_field(name="버전", value=python_version, inline=True)
-    embed.add_field(name="API 버전", value=discord_version, inline=True)
-    embed.set_footer(text="Synapse")
-    if bot.user.avatar:
-        embed.set_thumbnail(url=bot.user.avatar.url)
-    await ctx.send(embed=embed)
-
 
 if __name__ == "__main__":
     bot.run(TOKEN)

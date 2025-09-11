@@ -35,6 +35,7 @@ async def log_member_join(member: discord.Member):
             timestamp=datetime.datetime.now()
         )
         embed.set_author(name=str(member), icon_url=member.display_avatar.url)
+        embed.set_footer(text=f"ID: {member.id}")
         await log_channel.send(embed=embed)
 
 async def log_member_remove(member: discord.Member):
@@ -47,8 +48,9 @@ async def log_member_remove(member: discord.Member):
             timestamp=datetime.datetime.now()
         )
         embed.set_author(name=str(member), icon_url=member.display_avatar.url)
-
+        embed.set_footer(text=f"ID: {member.id}")
         await log_channel.send(embed=embed)
+        
 # 역할 로그
 async def log_member_role_update(before: discord.Member, after: discord.Member):
     if before.guild is None:
@@ -78,8 +80,7 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
             color=discord.Color.blue(),
             timestamp=time
         )
-        if actor:
-            embed.set_author(name=f"수행자: {actor}", icon_url=actor.display_avatar.url)
+        embed.set_footer(text=f"ID: {(actor.id if actor else after.id)}")
         await log_channel.send(embed=embed)
 
     # 역할 제거 로그
@@ -99,7 +100,7 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
             timestamp=time
         )
         if actor:
-            embed.set_author(name=f"수행자: {actor}", icon_url=actor.display_avatar.url)
+            embed.set_footer(text=f"ID: {(actor.id if actor else after.id)}")
         await log_channel.send(embed=embed)
 
 async def log_message_edit(before: discord.Message, after: discord.Message):
@@ -118,4 +119,10 @@ async def log_message_edit(before: discord.Message, after: discord.Message):
         embed.add_field(name="수정 전", value=before.content or "(내용 없음)", inline=False)
         embed.add_field(name="수정 후", value=after.content or "(내용 없음)", inline=False)
         embed.add_field(name="채널", value=before.channel.mention, inline=True)
+        embed.add_field(
+            name="메시지로 이동",
+            value=f"[여기서 보기]({before.jump_url})",
+            inline=True
+        )
+        embed.set_footer(text=f"ID : {after.author.id}")
         await log_channel.send(embed=embed)
