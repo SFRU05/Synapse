@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from itertools import cycle
 from discord.ext import tasks
 from random_draw import RandomDraw
-from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit
+from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit, log_channel_delete, log_channel_create, log_channel_update, log_role_update
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
 
@@ -118,6 +118,22 @@ async def on_message_edit(before, after):
 @bot.event
 async def on_message_edit(before, after):
     await log_message_edit(before, after)
+
+@bot.event
+async def on_guild_channel_create(channel):
+    await log_channel_create(channel)
+
+@bot.event
+async def on_guild_channel_delete(channel):
+    await log_channel_delete(channel)
+
+@bot.event
+async def on_guild_channel_update(before, after):
+    await log_channel_update(before, after)
+
+@bot.event
+async def on_guild_role_update(before: discord.Role, after: discord.Role):
+    await log_role_update(before, after)
 
 if __name__ == "__main__":
     bot.run(TOKEN)

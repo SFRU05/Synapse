@@ -26,6 +26,7 @@ async def send_bot_info(ctx, bot):
     embed.add_field(name="버전", value=python_version, inline=True)
     embed.add_field(name="API 버전", value=discord_version, inline=True)
     embed.add_field(name="서버 수", value=f"{len(bot.guilds)}개", inline=True)
+    embed.add_field(name="GitHub", value="[SFRU05/Synapse](https://github.com/SFRU05/Synapse)", inline=True)
     embed.set_footer(text="Synapse Bot")
     if bot.user.avatar:
         embed.set_thumbnail(url=bot.user.avatar.url)
