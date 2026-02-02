@@ -21,8 +21,7 @@ bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_comma
 def get_status_list():
     return [
         "서버 관리",
-        "음악 듣기",
-        f"노는 중"]
+        "서버 {n}개에서 노는 중"]
 
 status = cycle(get_status_list())
 
@@ -44,9 +43,11 @@ async def on_ready():
     await bot.add_cog(RandomDraw(bot))
     change_status.start()
 
-@tasks.loop(seconds=5) # n초마다 다음 메시지 출력
+@tasks.loop(seconds=10) # n초마다 다음 메시지 출력
 async def change_status():
-    await bot.change_presence(activity=discord.Game(next(status)))
+    template = next(status)
+    text = template.format(n=len(bot.guilds))
+    await bot.change_presence(activity=discord.Game(text))
 
 @bot.command()
 async def ping(ctx):
