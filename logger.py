@@ -25,6 +25,32 @@ async def log_message_delete(message: discord.Message):
         embed.add_field(name="채널", value=message.channel.mention, inline=True)
         await log_channel.send(embed=embed)
 
+def _format_age(dt):
+    if not dt:
+        return "알 수 없음"
+    try:
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        else:
+            dt = dt.astimezone(datetime.timezone.utc)
+    except Exception:
+        pass
+    now = datetime.datetime.now(datetime.timezone.utc)
+    delta = now - dt
+    days = delta.days
+    years = days // 365
+    months = (days % 365) // 30
+    days_rem = (days % 365) % 30
+    parts = []
+    if years:
+        parts.append(f"{years}년")
+    if months:
+        parts.append(f"{months}개월")
+    if days_rem or not parts:
+        parts.append(f"{days_rem}일")
+    return f"{dt.strftime('%Y-%m-%d')} ({' '.join(parts)} 전 생성)"
+
+
 async def log_member_join(member: discord.Member):
     log_channel = discord.utils.get(member.guild.text_channels, name=LOG_CHANNEL_NAME)
     if log_channel:
@@ -36,6 +62,7 @@ async def log_member_join(member: discord.Member):
         )
         embed.set_author(name=str(member), icon_url=member.display_avatar.url)
         embed.set_footer(text=f"ID: {member.id}")
+        embed.add_field(name="계정 생성일", value=_format_age(getattr(member, "created_at", None)), inline=True)
         await log_channel.send(embed=embed)
 
 async def log_member_remove(member: discord.Member):
@@ -80,7 +107,7 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
             color=discord.Color.blue(),
             timestamp=time
         )
-        embed.set_footer(text=f"ID: {(actor.id if actor else after.id)}")
+        embed.set_footer(text=f"관리자 ID: {(actor.id if actor else after.id)}")
         await log_channel.send(embed=embed)
 
     # 역할 제거 로그
@@ -99,8 +126,7 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
             color=discord.Color.purple(),
             timestamp=time
         )
-        if actor:
-            embed.set_footer(text=f"ID: {(actor.id if actor else after.id)}")
+        embed.set_footer(text=f"관리자 ID: {(actor.id if actor else after.id)}")
         await log_channel.send(embed=embed)
 
 # 역할 수정 감지
