@@ -1,19 +1,20 @@
 import discord
 from discord.ext import commands
 import os
-from help import send_help
+from help import help_slash
 from infomations.bot_info import send_bot_info
 from infomations.server_info import send_server_info
 from infomations.user_info import send_user_info
 from infomations.avatar_info import avatar
-from moderation.kick import setup_kick_command
-from moderation.timeout import pardon_timeout
-from moderation.timeout import setup_timeout_command
-from moderation.ban import setup_ban_command
+from moderation.kick import kick_slash
+from moderation.timeout import timeout_slash, pardon_slash
+from moderation.ban import ban_slash
 from dotenv import load_dotenv
 from itertools import cycle
 from discord.ext import tasks
 from random_draw import RandomDraw
+from stocks.stock import stock_slash
+from stocks.freq_stock import favorites_slash
 from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit, log_channel_delete, log_channel_create, log_channel_update, log_role_update
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
@@ -32,14 +33,19 @@ intents.members = True
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
 
+bot.tree.add_command(stock_slash)
+bot.tree.add_command(favorites_slash)
+bot.tree.add_command(help_slash)
+bot.tree.add_command(timeout_slash)
+bot.tree.add_command(pardon_slash)
+bot.tree.add_command(kick_slash)
+bot.tree.add_command(ban_slash)
+
 # 봇이 준비되었을 떄 나오는 상태메시지
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
-    await setup_kick_command(bot) # Kick 명령어 실행
-    await setup_ban_command(bot) # Ban 명령어 실행
-    await setup_timeout_command(bot) # Timeout 명령어 실행
-    await pardon_timeout(bot)
+    await bot.tree.sync() # 슬래시 명령어 동기화
     await bot.add_cog(RandomDraw(bot))
     change_status.start()
 
@@ -64,11 +70,6 @@ async def clear(ctx, amount: int = None):
     await ctx.channel.purge(limit=amount + 1)
     deleted = await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"요청 **{amount}**개 중 **{len(deleted) - 1}개**의 메시지를 삭제했습니다.")
-
-# help 명령어
-@bot.command()
-async def help(ctx, category: str = None):
-    await send_help(ctx, category)
 
 @bot.command(name="info")
 async def info(ctx):

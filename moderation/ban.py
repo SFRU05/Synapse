@@ -1,79 +1,89 @@
 import discord
-from discord.ext import commands
-import asyncio
+from discord import app_commands
 
-bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
-async def setup_ban_command(bot):
-    @bot.command()
-    @commands.has_permissions(ban_members=True)
-    async def ban(ctx, member: discord.Member = None, *, reason: str = "사유 없음"):
-        if member is None:
-            await ctx.send("차단할 사용자를 멘션하거나 ID를 입력하세요.")
-            return
+class BanConfirmView(discord.ui.View):
+    def __init__(self, member: discord.Member, reason: str, moderator: discord.Member):
+        super().__init__(timeout=15)
+        self.member = member
+        self.reason = reason
+        self.moderator = moderator
+        self.result = None
 
-        embed = discord.Embed(
-            title="차단 확인",
-            description=f"{member.mention} 님을 서버에서 차단하시겠습니까?",
-            color=discord.Color.red()
-        )
-        embed.add_field(name="사유", value=reason, inline=False)
+    async def interaction_check(self, interaction: discord.Interaction):
+        return interaction.user.id == self.moderator.id
 
-        confirm_message = await ctx.send(embed=embed)
-        await confirm_message.add_reaction("✅")
-        await confirm_message.add_reaction("❌")
+    @discord.ui.button(label="✅ 예", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.result = "confirm"
+        self.stop()
+        await interaction.response.defer(ephemeral=False)
 
-        def check(reaction, user):
-            return (
-                user == ctx.author
-                and str(reaction.emoji) in ["✅", "❌"]
-                and reaction.message.id == confirm_message.id
-            )
+    @discord.ui.button(label="❌ 아니요", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.result = "cancel"
+        self.stop()
+        await interaction.response.defer(ephemeral=True)
 
+@app_commands.command(name="ban", description="멤버를 서버에서 차단합니다. (확인 버튼)")
+@app_commands.describe(
+    member="차단할 멤버를 선택하세요.",
+    reason="차단 사유. 기본값: 사유 없음"
+)
+async def ban_slash(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    reason: str = "사유 없음"
+):
+    if not interaction.user.guild_permissions.ban_members:
+        await interaction.response.send_message("이 명령어를 실행할 권한이 없습니다.", ephemeral=True)
+        return
+    if member is None:
+        await interaction.response.send_message("차단할 멤버를 선택하세요.", ephemeral=True)
+        return
+    if member == interaction.user:
+        await interaction.response.send_message("자기 자신은 차단할 수 없습니다.", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="차단 확인",
+        description=f"{member.mention} 님을 서버에서 차단하시겠습니까?",
+        color=discord.Color.red()
+    )
+    embed.add_field(name="사유", value=reason, inline=False)
+    embed.set_footer(text="15초 내 [예] 또는 [아니요]를 눌러주세요.")
+
+    view = BanConfirmView(member, reason, interaction.user)
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    await view.wait()
+
+    if view.result == "confirm":
         try:
-            reaction, user = await bot.wait_for("reaction_add", timeout=15.0, check=check)
-            if str(reaction.emoji) == "✅":
-                try:
-                    await member.ban(reason=reason)
-                    await confirm_message.clear_reactions()
-
-                    embed = discord.Embed(
-                        title="차단 완료",
-                        description=f"{member.mention} 님이 서버에서 차단되었습니다.",
-                        color=discord.Color.green()
-                    )
-                    embed.add_field(name="사유", value=reason, inline=False)
-                    embed.add_field(name="중재자", value=f"{ctx.author.mention}", inline=False)
-
-                    await ctx.send(embed=embed)
-                except discord.Forbidden:
-                    await confirm_message.edit(content="봇에 적절한 권한이 없습니다.")
-                except discord.HTTPException:
-                    await confirm_message.edit(content="밴 요청을 처리하는 중 오류가 발생했습니다.")
-            elif str(reaction.emoji) == "❌":
-                await confirm_message.clear_reactions()
-
-                embed = discord.Embed(
-                    title="차단 요청 취소",
-                    description="차단 요청이 취소되었습니다.",
-                    color=discord.Color.light_gray()
-                )
-                await confirm_message.edit(embed=embed)
-        except asyncio.TimeoutError:
-
-            embed = discord.Embed(
-                title="시간 초과",
-                description="차단 요청이 취소되었습니다.",
-                color=discord.Color.light_gray()
+            await member.ban(reason=reason)
+            public_embed = discord.Embed(
+                title="차단 완료",
+                description=f"{member.mention} 님이 서버에서 차단되었습니다.",
+                color=discord.Color.green()
             )
-
-            await confirm_message.clear_reactions()
-            await confirm_message.edit(embed=embed)
-
-    @ban.error
-    async def ban_error(ctx, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send("올바르지 않은 사용자입니다. 다시 확인해주세요.")
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("이 명령어를 실행할 권한이 없습니다.")
-        else:
-            await ctx.send("명령어 실행 중 오류가 발생했습니다.")
+            public_embed.add_field(name="사유", value=reason, inline=False)
+            public_embed.add_field(name="중재자", value=interaction.user.mention, inline=False)
+            await interaction.channel.send(embed=public_embed)
+            await interaction.edit_original_response(content="✅ 차단이 수행되었습니다.", embed=None, view=None)
+        except discord.Forbidden:
+            await interaction.edit_original_response(content="❌ 봇에 차단 권한이 없습니다.", embed=None, view=None)
+        except discord.HTTPException:
+            await interaction.edit_original_response(content="❌ 차단 요청 중 오류가 발생했습니다.", embed=None, view=None)
+    elif view.result == "cancel":
+        cancel_embed = discord.Embed(
+            title="차단 요청 취소",
+            description="차단 요청이 취소되었습니다.",
+            color=discord.Color.light_grey()
+        )
+        await interaction.edit_original_response(embed=cancel_embed, view=None)
+    else:
+        timeout_embed = discord.Embed(
+            title="시간 초과",
+            description="15초 내 선택이 없어 차단 요청이 취소되었습니다.",
+            color=discord.Color.light_grey()
+        )
+        await interaction.edit_original_response(embed=timeout_embed, view=None)
