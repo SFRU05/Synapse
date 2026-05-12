@@ -2,10 +2,10 @@ import discord
 from discord.ext import commands
 import os
 from help import help_slash
-from infomations.bot_info import send_bot_info
-from infomations.server_info import send_server_info
-from infomations.user_info import send_user_info
-from infomations.avatar_info import avatar
+from infomations.bot_info import info_slash
+from infomations.server_info import serverinfo_slash
+from infomations.user_info import userinfo_slash
+from infomations.avatar_info import avatar_slash
 from moderation.kick import kick_slash
 from moderation.timeout import timeout_slash, pardon_slash
 from moderation.ban import ban_slash
@@ -15,16 +15,25 @@ from discord.ext import tasks
 from random_draw import RandomDraw
 from stocks.stock import stock_slash
 from stocks.freq_stock import favorites_slash
-from logger import log_message_delete, log_member_join, log_member_remove, log_member_role_update, log_message_edit, log_channel_delete, log_channel_create, log_channel_update, log_role_update
+from logger_db import ensure_db
+from discord_logs.log_channel_slash import setlog_slash
+from discord_logs.logger import (
+    log_message_delete, log_message_edit, log_member_join, log_member_remove,
+    log_member_role_update, log_role_update,
+    log_channel_create, log_channel_delete, log_channel_update,
+)
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
 
 def get_status_list():
     return [
-        "서버 관리",
-        "서버 {n}개에서 노는 중"]
+        "서버 관리 중",
+        "서버 {n}개에서 노는 중",
+        "/help로 명령어 확인하기"]
 
 status = cycle(get_status_list())
+
+ensure_db()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -33,13 +42,21 @@ intents.members = True
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
 
-bot.tree.add_command(stock_slash)
-bot.tree.add_command(favorites_slash)
-bot.tree.add_command(help_slash)
-bot.tree.add_command(timeout_slash)
-bot.tree.add_command(pardon_slash)
-bot.tree.add_command(kick_slash)
-bot.tree.add_command(ban_slash)
+
+    ### 슬래시 커맨드 명령어 모음 ###
+bot.tree.add_command(stock_slash) # 주식 보여주기
+bot.tree.add_command(favorites_slash) # 자주 보는 주식 보여주기
+bot.tree.add_command(help_slash) # Help 명령어
+bot.tree.add_command(timeout_slash) # Timeout
+bot.tree.add_command(pardon_slash) # Timeout 해제
+bot.tree.add_command(kick_slash) # Kick
+bot.tree.add_command(ban_slash) # Ban
+bot.tree.add_command(avatar_slash) # Avatar 보여주기
+bot.tree.add_command(info_slash) # 봇 정보 보여주기
+bot.tree.add_command(serverinfo_slash) # 서버 정보 보여주기
+bot.tree.add_command(userinfo_slash) # 유저 정보 보여주기
+bot.tree.add_command(setlog_slash)
+
 
 # 봇이 준비되었을 떄 나오는 상태메시지
 @bot.event
@@ -71,27 +88,11 @@ async def clear(ctx, amount: int = None):
     deleted = await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"요청 **{amount}**개 중 **{len(deleted) - 1}개**의 메시지를 삭제했습니다.")
 
-@bot.command(name="info")
-async def info(ctx):
-    await send_bot_info(ctx, bot)
-
-@bot.command(name="serverinfo")
-async def server_info(ctx):
-    await send_server_info(ctx)
-
-@bot.command(name="userinfo")
-async def user_info(ctx, member: discord.Member = None):
-    await send_user_info(ctx, member)
-
-@bot.command(name="avatar")
-async def avatar_info(ctx, member: discord.Member = None):
-    await avatar(ctx, member)
-
 @bot.command(name="log")
 async def log_command(ctx):
     embed = discord.Embed(
         title="로그 설정 방법",
-        description="#logs 채팅 채널을 생성하세요.",
+        description="#logs_discord 채팅 채널을 생성하세요.",
         color=discord.Color.orange()
     )
     await ctx.send(embed=embed)
@@ -111,7 +112,10 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_member_update(before, after):
-    await log_member_role_update(before, after) # 멤버의 역할이 변경되었을 때 로그
+    # 역할 변경만 감지 (상태, 닉네임 등은 무시)
+    if getattr(before, "roles", None) and getattr(after, "roles", None):
+        if set(before.roles) != set(after.roles):
+            await log_member_role_update(before, after)
 
 @bot.event
 async def on_message_edit(before, after):
