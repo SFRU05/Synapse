@@ -12,7 +12,6 @@ from moderation.ban import ban_slash
 from dotenv import load_dotenv
 from itertools import cycle
 from discord.ext import tasks
-from random_draw import RandomDraw
 from stocks.stock import stock_slash
 from stocks.freq_stock import favorites_slash
 from logger_db import ensure_db
@@ -55,15 +54,13 @@ bot.tree.add_command(avatar_slash) # Avatar 보여주기
 bot.tree.add_command(info_slash) # 봇 정보 보여주기
 bot.tree.add_command(serverinfo_slash) # 서버 정보 보여주기
 bot.tree.add_command(userinfo_slash) # 유저 정보 보여주기
-bot.tree.add_command(setlog_slash)
-
+bot.tree.add_command(setlog_slash) # 로그 채널 설정
 
 # 봇이 준비되었을 떄 나오는 상태메시지
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
     await bot.tree.sync() # 슬래시 명령어 동기화
-    await bot.add_cog(RandomDraw(bot))
     change_status.start()
 
 @tasks.loop(seconds=10) # n초마다 다음 메시지 출력
@@ -71,6 +68,11 @@ async def change_status():
     template = next(status)
     text = template.format(n=len(bot.guilds))
     await bot.change_presence(activity=discord.Game(text))
+
+async def setup_hook():
+    await bot.load_extension('random_draw')
+
+bot.setup_hook = setup_hook
 
 @bot.command()
 async def ping(ctx):

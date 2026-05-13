@@ -229,7 +229,6 @@ class StockView(discord.ui.View):
     interval=[
         app_commands.Choice(name="1분봉", value="1m"),
         app_commands.Choice(name="5분봉", value="5m"),
-        app_commands.Choice(name="10분봉", value="10m"),
         app_commands.Choice(name="15분봉", value="15m"),
         app_commands.Choice(name="30분봉", value="30m"),
         app_commands.Choice(name="1시간봉", value="60m"),
