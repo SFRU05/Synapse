@@ -6,6 +6,22 @@ import datetime
 
 start_time = time.time()
 
+class InfoButtonView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(
+            label="서포트 서버",
+            url="https://discord.gg/kqhzxvNk5y",
+            style=discord.ButtonStyle.link,
+            emoji="🛠️"
+        ))
+        self.add_item(discord.ui.Button(
+            label="GitHub",
+            url="https://github.com/SFRU05/Synapse",
+            style=discord.ButtonStyle.link,
+            emoji="🌐"
+        ))
+
 @app_commands.command(name="info", description="이 봇의 정보를 보여줍니다.")
 async def info_slash(
     interaction: discord.Interaction
@@ -17,9 +33,7 @@ async def info_slash(
     uptime_str = f"{hours}시간 {minutes}분 {seconds}초"
     python_version = sys.version.split()[0]
     discord_version = discord.__version__
-
-    bot = interaction.client  # discord.Bot or commands.Bot/AutoShardedBot
-
+    bot = interaction.client
     embed = discord.Embed(
         title="봇 정보",
         color=discord.Color.purple(),
@@ -36,4 +50,5 @@ async def info_slash(
     embed.set_footer(text="Synapse Bot")
     if bot.user.display_avatar:
         embed.set_thumbnail(url=bot.user.display_avatar.url)
-    await interaction.response.send_message(embed=embed)
+
+    await interaction.response.send_message(embed=embed, view=InfoButtonView())

@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 from help import help_slash
 from infomations.bot_info import info_slash
+import datetime
 from infomations.server_info import serverinfo_slash
 from infomations.user_info import userinfo_slash
 from infomations.avatar_info import avatar_slash
@@ -142,6 +143,45 @@ async def on_guild_channel_update(before, after):
 @bot.event
 async def on_guild_role_update(before: discord.Role, after: discord.Role):
     await log_role_update(before, after)
+
+class BotIntroView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(
+            label="서포트 서버",
+            url="https://discord.gg/kqhzxvNk5y",
+            style=discord.ButtonStyle.link,
+            emoji="🛠️"
+        ))
+        self.add_item(discord.ui.Button(
+            label="GitHub",
+            url="https://github.com/SFRU05/Synapse",  # ← 본인 깃허브 저장소 주소로 변경!
+            style=discord.ButtonStyle.link,
+            emoji="🌐"
+        ))
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+    BOT_MENTION = message.guild.me.mention if message.guild else bot.user.mention
+    content = message.content.strip()
+    if content == BOT_MENTION:
+        embed = discord.Embed(
+            title="안녕하세요! 👋",
+            description=(
+                f"다양한 기능들을 수행하는 디스코드 봇, Syanpse입니다.\n\n"
+                f"`/help`를 입력하여 명령어를 알아보세요!"
+            ),
+            color=discord.Color.blurple(),
+            timestamp=datetime.datetime.now(datetime.UTC)
+        )
+        embed.set_footer(text="문의, 피드백: 서포트 서버로 오세요!")
+        if bot.user.display_avatar:
+            embed.set_thumbnail(url=bot.user.display_avatar.url)
+
+        await message.channel.send(embed=embed, view=BotIntroView())
+    await bot.process_commands(message)
 
 if __name__ == "__main__":
     bot.run(TOKEN)
