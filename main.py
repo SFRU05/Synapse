@@ -15,6 +15,7 @@ from itertools import cycle
 from discord.ext import tasks
 from stocks.stock import stock_slash
 from stocks.freq_stock import favorites_slash
+import giveways
 from logger_db import ensure_db
 from discord_logs.log_channel_slash import setlog_slash
 from discord_logs.logger import (
@@ -56,12 +57,15 @@ bot.tree.add_command(info_slash) # 봇 정보 보여주기
 bot.tree.add_command(serverinfo_slash) # 서버 정보 보여주기
 bot.tree.add_command(userinfo_slash) # 유저 정보 보여주기
 bot.tree.add_command(setlog_slash) # 로그 채널 설정
+bot.tree.add_command(giveways.giveway_slash) # Giveaway 명령어
+bot.tree.add_command(giveways.giveway_list_slash) # Giveaway 리스트 명령어
 
 # 봇이 준비되었을 떄 나오는 상태메시지
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
     await bot.tree.sync() # 슬래시 명령어 동기화
+    await giveways.scheduled_giveaway_announce(bot)
     change_status.start()
 
 @tasks.loop(seconds=10) # n초마다 다음 메시지 출력
@@ -72,6 +76,9 @@ async def change_status():
 
 async def setup_hook():
     await bot.load_extension('random_draw')
+
+async def main():
+    await bot.load_extension("giveaway_cog")
 
 bot.setup_hook = setup_hook
 

@@ -24,6 +24,7 @@
 
 [ etc ]
 - Random Draw
+- Giveaways
 ```
 
 If you use this Discord Bot, **make a ".env" file in your folder.**
