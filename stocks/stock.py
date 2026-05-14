@@ -18,7 +18,11 @@ def build_name_to_symbol_map():
         if not os.path.exists(filename):
             print(f"{filename} 파일이 없습니다! (KRX 자동 매핑 일부 제한)")
             continue
-        df = pd.read_html(filename, header=0, encoding="euc-kr")[0]
+        try:
+            df = pd.read_html(filename, header=0, encoding="euc-kr")[0]
+        except Exception as e:
+            print(f"{filename} 읽기 실패: {e}")
+            continue
         for _, row in df.iterrows():
             try:
                 name = str(row['회사명']).strip()
@@ -29,24 +33,33 @@ def build_name_to_symbol_map():
     return name2symbol
 
 KOR_NAME2SYMBOL = build_name_to_symbol_map()
+
 symbol_map = {
     '삼전': '005930.KS',
-    '삼성전자': '005930.KS',
-    '카카오': '035720.KS',
-    'AAPL': 'AAPL',
+    '삼성전자': '005930.KS'
 }
 
 def resolve_symbol(user_input):
     kor_input = user_input.strip()
-    user_input = kor_input.upper()
+    user_input_up = kor_input.upper()
     if kor_input in symbol_map:
         return symbol_map[kor_input]
     if kor_input in KOR_NAME2SYMBOL:
         return KOR_NAME2SYMBOL[kor_input]
-    if user_input.isalpha():
-        return user_input
-    if (user_input.endswith('.KS') or user_input.endswith('.KQ')) and user_input[:-3].isdigit():
-        return user_input
+    if user_input_up.isalpha():
+        return user_input_up
+    if (user_input_up.endswith('.KS') or user_input_up.endswith('.KQ')) and user_input_up[:-3].isdigit():
+        return user_input_up
+    return None
+
+def get_usd_krw_rate():
+    try:
+        resp = requests.get('https://api.exchangerate.host/latest?base=USD&symbols=KRW', timeout=5)
+        data = resp.json()
+        if 'rates' in data and 'KRW' in data['rates']:
+            return data['rates']['KRW']
+    except Exception:
+        pass
     return None
 
 DB_PATH = 'favorite_stocks.db'
@@ -80,16 +93,6 @@ def remove_favorite(user_id, symbol):
         conn.execute("DELETE FROM favorites WHERE user_id=? AND symbol=?", (user_id, symbol))
         conn.commit()
 
-def get_usd_krw_rate():
-    try:
-        resp = requests.get('https://api.exchangerate.host/latest?base=USD&symbols=KRW', timeout=5)
-        data = resp.json()
-        if 'rates' in data and 'KRW' in data['rates']:
-            return data['rates']['KRW']
-    except Exception:
-        pass
-    return None
-
 class DateSelect(discord.ui.Select):
     def __init__(self, parent_view):
         self.parent_view = parent_view
@@ -100,6 +103,7 @@ class DateSelect(discord.ui.Select):
             label = d.strftime("%Y-%m-%d")
             options.append(discord.SelectOption(label=label, value=label))
         super().__init__(placeholder="날짜 선택", min_values=1, max_values=1, options=options, row=0)
+
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.page = 0
         self.parent_view.date = datetime.datetime.strptime(self.values[0], "%Y-%m-%d").date()
@@ -123,6 +127,7 @@ class StockView(discord.ui.View):
         self.message = None
         self.add_item(DateSelect(self))
         self.update_fav_label()
+
     def update_fav_label(self):
         for item in self.children:
             if isinstance(item, discord.ui.Button) and getattr(item, "custom_id", None) == "fav":
@@ -132,15 +137,23 @@ class StockView(discord.ui.View):
                 else:
                     item.label = "⭐ 관심종목 추가"
                     item.style = discord.ButtonStyle.success
+
     async def update_embed(self, interaction=None):
         start_str = self.date.strftime('%Y-%m-%d')
         end_str = (self.date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         ticker = yf.Ticker(self.symbol)
-        h = ticker.history(interval=self.interval, start=start_str, end=end_str)
+
+        try:
+            h = ticker.history(interval=self.interval, start=start_str, end=end_str)
+        except Exception:
+            h = None
+
         n_per_page = 10
         self.closes, self.times = [], []
         rows = []
+
         if h is not None and not h.empty and 'Close' in h and len(h['Close']) > 1:
+            # closes, times 채우기
             self.closes = h['Close'].tolist()
             self.times = h.index.tolist()
             page_max = (len(self.closes)-2)//n_per_page if self.closes else 0
@@ -148,12 +161,18 @@ class StockView(discord.ui.View):
             st = self.page * n_per_page + 1
             ed = st + n_per_page
             for i in range(st, min(ed, len(self.closes))):
-                diff = self.closes[i] - self.closes[i-1]
+                prev = self.closes[i-1] if i-1 >= 0 else None
+                cur = self.closes[i]
+                diff = cur - prev if prev is not None else 0
+                percent = (diff / prev) * 100 if prev and prev != 0 else 0
+                percent_str = f" ({percent:+.2f}%)" if prev and prev != 0 else ""
                 emoji = "🟢" if diff > 0 else "🔴" if diff < 0 else "🟡"
                 tm_str = self.times[i].strftime('%H:%M')
-                price_str = (f"{self.closes[i]:,.0f}원" if self.currency == 'KRW'
-                             else f"{self.closes[i]:,.2f}{self.currency}")
-                rows.append(f"{tm_str} | {emoji} | {price_str}")
+                if self.currency == 'KRW':
+                    price_str = f"{cur:,.0f}원"
+                else:
+                    price_str = f"{cur:,.2f}{self.currency}"
+                rows.append(f"{tm_str} | {emoji} | {price_str}{percent_str}")
             sparkline = (
                 "```\n시간    | 등락 | 가격\n-------|-----|----------\n"
                 + "\n".join(rows)
@@ -161,6 +180,7 @@ class StockView(discord.ui.View):
             ) if rows else "차트 데이터 없음"
         else:
             sparkline = "차트 데이터 없음"
+
         embed = discord.Embed(
             title=f"{self.name} {start_str} 시간별 등락 및 주가 (page {self.page+1})",
             color=discord.Color.blue()
@@ -170,7 +190,24 @@ class StockView(discord.ui.View):
             value=sparkline,
             inline=False
         )
-        price = ticker.info.get('regularMarketPrice')
+
+        price = None
+        prev_close = None
+        try:
+            # 현재가
+            info = ticker.info
+            price = info.get('regularMarketPrice')
+        except Exception:
+            price = None
+
+        try:
+            hist_daily = ticker.history(period="5d", interval="1d")
+            if hist_daily is not None and not hist_daily.empty:
+                prev_close = hist_daily['Close'].dropna().iloc[-1]
+        except Exception:
+            prev_close = None
+
+        # footer text 구성
         price_text = ""
         if price is not None:
             if self.currency == 'USD':
@@ -178,12 +215,20 @@ class StockView(discord.ui.View):
                 if rate:
                     price_text = f"{price:,.2f}달러 ≈ {int(price*rate):,}원"
                 else:
-                    price_text = f"{price:.2f}달러"
+                    price_text = f"{price:,.2f}달러"
             elif self.currency == 'KRW':
-                price_text = f"{price:,}원"
+                price_text = f"{int(price):,}원"
             else:
                 price_text = f"{price} {self.currency}"
-            embed.set_footer(text=f"현재가: {price_text}")
+        if prev_close and price is not None:
+            diff_total = price - prev_close
+            percent_total = (diff_total / prev_close) * 100 if prev_close != 0 else 0
+            emoji_total = "🟢" if diff_total > 0 else "🔴" if diff_total < 0 else "🟡"
+            footer_text = f"현재가: {price_text} | {emoji_total} {diff_total:+,.2f} ({percent_total:+.2f}%) (전일: {prev_close:,.2f}{self.currency})"
+        else:
+            footer_text = f"현재가: {price_text}" if price_text else "현재가 정보 없음"
+        embed.set_footer(text=footer_text)
+
         if interaction:
             await interaction.response.edit_message(embed=embed, view=self)
         elif self.message:
@@ -191,17 +236,20 @@ class StockView(discord.ui.View):
         else:
             sent = await self.interaction.followup.send(embed=embed, view=self)
             self.message = sent
+
     @discord.ui.button(label="◀ PREV(시간)", style=discord.ButtonStyle.secondary, row=1)
     async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.page > 0:
             self.page -= 1
             await self.update_embed(interaction)
+
     @discord.ui.button(label="NEXT(시간) ▶", style=discord.ButtonStyle.secondary, row=1)
     async def next_(self, interaction: discord.Interaction, button: discord.ui.Button):
         max_page = (len(self.closes)-2)//10 if self.closes else 0
         if self.page < max_page:
             self.page += 1
             await self.update_embed(interaction)
+
     @discord.ui.button(label="-", style=discord.ButtonStyle.success, row=2, custom_id="fav")
     async def favorite(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_favorite(self.user_id, self.symbol):
@@ -214,8 +262,10 @@ class StockView(discord.ui.View):
             self.is_fav_now = False
             self.update_fav_label()
             await interaction.response.edit_message(content="관심종목에서 삭제되었습니다.", embed=None, view=self)
+
     async def interaction_check(self, interaction):
         return interaction.user.id == int(self.user_id)
+
     async def on_timeout(self):
         try:
             if self.message:
@@ -223,6 +273,7 @@ class StockView(discord.ui.View):
         except Exception:
             pass
 
+# --- 슬래시 커맨드 정의 ---
 @app_commands.command(name="stock", description="주식 시세와 차트 보기")
 @app_commands.describe(symbol="조회할 종목명/티커")
 @app_commands.choices(
@@ -265,6 +316,8 @@ async def stock_slash(
     now = datetime.datetime.now(pytz.timezone(tz))
     user_id = str(interaction.user.id)
     is_fav = is_favorite(user_id, query_symbol)
+
     view = StockView(
-        interaction, query_symbol, name, actual_interval, currency, now.date(), tz, user_id, is_fav)
+        interaction, query_symbol, name, actual_interval, currency, now.date(), tz, user_id, is_fav
+    )
     await view.update_embed()
