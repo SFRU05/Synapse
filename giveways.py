@@ -29,7 +29,6 @@ def parse_time_to_minutes(time_text: str) -> int:
 
 # DB에서 읽은 datetime을 "timezone-aware(UTC)"로
 def parse_utc(dt_txt):
-    # created_at이 2024-05-15 16:20:52.001044라면
     txt = str(dt_txt).split('.')[0]
     dt = datetime.strptime(txt, '%Y-%m-%d %H:%M:%S')
     return dt.replace(tzinfo=timezone.utc)
@@ -176,6 +175,92 @@ async def scheduled_giveaway_announce(bot):
                 delayed_announce(bot, id, 2)
             )
 
+class GiveawayCancelView(discord.ui.View):
+    def __init__(self, giveaway_id):
+        super().__init__(timeout=60)  # ephemeral 이라 1분쯤이면 충분
+        self.giveaway_id = giveaway_id
+
+    @discord.ui.button(label="참여 취소하기", style=discord.ButtonStyle.secondary, custom_id="giveaway_cancel_btn")
+    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        with sqlite3.connect(DB_PATH) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "DELETE FROM giveaway_participants WHERE giveaway_id=? AND user_id=?",
+                (self.giveaway_id, interaction.user.id)
+            )
+            conn.commit()
+        giveaway = get_giveaway_by_id(self.giveaway_id)
+        p = get_participants(self.giveaway_id)
+        count = len(p)
+        created_dt = parse_utc(giveaway[7])
+        expire_dt = created_dt + timedelta(minutes=int(giveaway[2]))
+        ts = int(expire_dt.timestamp())
+        embed = discord.Embed(
+            title=f"🎉 {giveaway[1]}",
+            description=(f"당첨 인원: {giveaway[3]}명\n"
+                        f"마감 시각: <t:{ts}:F> (<t:{ts}:R>)\n"
+                        f"현재 참여 인원: **{count}명**"),
+            color=discord.Color.blurple()
+        )
+        msg_id, ch_id = giveaway[5], giveaway[6]
+        try:
+            if interaction.guild and msg_id and ch_id:
+                channel = interaction.guild.get_channel(ch_id)
+                if channel:
+                    msg = await channel.fetch_message(msg_id)
+                    msg_view = GiveawayJoinView(self.giveaway_id)
+                    await msg.edit(embed=embed, view=msg_view)
+        except Exception as e:
+            print("메시지 수정 오류:", e)
+        await interaction.response.send_message("참여가 취소되었습니다.", ephemeral=True)
+
+class GiveawayJoinView(discord.ui.View):
+    def __init__(self, giveaway_id):
+        super().__init__(timeout=None)
+        self.giveaway_id = giveaway_id
+
+    @discord.ui.button(label="참여하기", style=discord.ButtonStyle.primary, custom_id="giveaway_join_btn")
+    async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        giveaway = get_giveaway_by_id(self.giveaway_id)
+        if not giveaway or giveaway[8]:
+            await interaction.response.send_message("이 이벤트는 이미 종료되었습니다.", ephemeral=True)
+            return
+        p = get_participants(self.giveaway_id)
+        if interaction.user.id in p:
+            view = GiveawayCancelView(self.giveaway_id)
+            await interaction.response.send_message(
+                "이미 참여하셨습니다.\n참여를 취소하려면 아래 버튼을 눌러주세요.",
+                ephemeral=True,
+                view=view
+            )
+            return
+        add_participant(self.giveaway_id, interaction.user.id)
+        p = get_participants(self.giveaway_id)
+        count = len(p)
+        created_dt = parse_utc(giveaway[7])
+        expire_dt = created_dt + timedelta(minutes=int(giveaway[2]))
+        ts = int(expire_dt.timestamp())
+        embed = discord.Embed(
+            title=f"🎉 {giveaway[1]}",
+            description=(f"이벤트 시간: {giveaway[2]}분\n"
+                         f"당첨 인원: {giveaway[3]}명\n"
+                         f"마감 시각: <t:{ts}:F> (<t:{ts}:R>)\n"
+                         f"현재 참여 인원: **{count}명**"),
+            color=discord.Color.blurple()
+        )
+        msg_id, ch_id = giveaway[5], giveaway[6]
+        if msg_id and ch_id:
+            guild = interaction.guild
+            if guild:
+                channel = guild.get_channel(ch_id)
+                if channel:
+                    try:
+                        msg = await channel.fetch_message(msg_id)
+                        await msg.edit(embed=embed, view=self)
+                    except Exception as e:
+                        print("메시지 수정 오류:", e)
+        await interaction.response.send_message(f"참여 완료! (현재 {count}명)", ephemeral=True)
+
 class GiveawayRerollView(discord.ui.View):
     def __init__(self, giveaway_id):
         super().__init__(timeout=None)
@@ -226,7 +311,6 @@ async def delayed_announce(bot, giveaway_id, wait_sec):
     _, name, time_m, winners, host_id, msg_id, ch_id, created_at, _ = giveaway
     p = get_participants(giveaway_id)
 
-    # 추첨 & 당첨자 저장
     if len(p) < 1:
         winner_mentions = "참여자가 없어 추첨이 없습니다."
         winner_ids = []
@@ -236,6 +320,7 @@ async def delayed_announce(bot, giveaway_id, wait_sec):
         winner_mentions = ", ".join(f"<@{uid}>" for uid in chosen)
         winner_ids = chosen
         save_winners(giveaway_id, winner_ids)
+
     created_dt = parse_utc(created_at)
     expire_dt = created_dt + timedelta(minutes=int(time_m))
     ts = int(expire_dt.timestamp())
@@ -250,7 +335,6 @@ async def delayed_announce(bot, giveaway_id, wait_sec):
     )
     view = GiveawayRerollView(giveaway_id) if winner_ids else None
 
-    # 기존 참여 embed에서 버튼 제거
     for guild in bot.guilds:
         channel = guild.get_channel(ch_id)
         if channel:
@@ -260,52 +344,9 @@ async def delayed_announce(bot, giveaway_id, wait_sec):
                     await old.edit(view=None)
             except Exception:
                 pass
-            # 발표 임베드 새로 전송
             await channel.send(embed=embed, view=view)
             break
     end_giveaway(giveaway_id)
-
-class GiveawayJoinView(discord.ui.View):
-    def __init__(self, giveaway_id):
-        super().__init__(timeout=None)
-        self.giveaway_id = giveaway_id
-
-    @discord.ui.button(label="참여하기", style=discord.ButtonStyle.primary, custom_id="giveaway_join_btn")
-    async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        giveaway = get_giveaway_by_id(self.giveaway_id)
-        if not giveaway or giveaway[8]:
-            await interaction.response.send_message("이 이벤트는 이미 종료되었습니다.", ephemeral=True)
-            return
-        p = get_participants(self.giveaway_id)
-        if interaction.user.id in p:
-            await interaction.response.send_message("이미 참여하셨습니다.", ephemeral=True)
-            return
-        add_participant(self.giveaway_id, interaction.user.id)
-        p = get_participants(self.giveaway_id)
-        count = len(p)
-        created_dt = parse_utc(giveaway[7])
-        expire_dt = created_dt + timedelta(minutes=int(giveaway[2]))
-        ts = int(expire_dt.timestamp())
-        embed = discord.Embed(
-            title=f"🎉 {giveaway[1]}",
-            description=(f"이벤트 시간: {giveaway[2]}분\n"
-                         f"당첨 인원: {giveaway[3]}명\n"
-                         f"마감 시각: <t:{ts}:F> (<t:{ts}:R>)\n"
-                         f"현재 참여 인원: **{count}명**"),
-            color=discord.Color.blurple()
-        )
-        msg_id, ch_id = giveaway[5], giveaway[6]
-        if msg_id and ch_id:
-            guild = interaction.guild
-            if guild:
-                channel = guild.get_channel(ch_id)
-                if channel:
-                    try:
-                        msg = await channel.fetch_message(msg_id)
-                        await msg.edit(embed=embed, view=self)
-                    except Exception as e:
-                        print("메시지 수정 오류:", e)
-        await interaction.response.send_message(f"참여 완료! (현재 {count}명)", ephemeral=True)
 
 class GiveawayModal(discord.ui.Modal, title="Giveaway 등록"):
     name = discord.ui.TextInput(
