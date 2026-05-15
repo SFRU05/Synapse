@@ -16,7 +16,6 @@ from discord.ext import tasks
 from stocks.stock import stock_slash
 from stocks.freq_stock import favorites_slash
 import giveways
-from bot_config import settings_slash_cmd
 from logger_db import ensure_db
 
 from music.cogs.playback import playback_cmd
@@ -65,7 +64,6 @@ bot.tree.add_command(userinfo_slash) # 유저 정보 보여주기
 bot.tree.add_command(setlog_slash) # 로그 채널 설정
 bot.tree.add_command(giveways.giveway_slash) # Giveaway 명령어
 bot.tree.add_command(giveways.giveway_list_slash) # Giveaway 리스트 명령어
-bot.tree.add_command(settings_slash_cmd) # 봇 설정 명령어
 bot.tree.add_command(playback_cmd)  # 재생 관련 명령어
 bot.tree.add_command(queue_cmd)     # 대기열 관련 명령어
 bot.tree.add_command(volume_cmd)    # 볼륨 관련 명령어
