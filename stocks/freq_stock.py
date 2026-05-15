@@ -23,7 +23,7 @@ if not os.path.exists(DB_PATH):
     conn.commit()
     conn.close()
 
-@app_commands.command(name="freqstock", description="내 관심 종목 리스트 보기")
+@app_commands.command(name="관심종목", description="내 관심 종목 리스트 보기")
 async def favorites_slash(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=False)
     user_id = str(interaction.user.id)

@@ -48,7 +48,7 @@ class PardonConfirmView(discord.ui.View):
         self.stop()
         await interaction.response.defer(ephemeral=True)
 
-@app_commands.command(name="timeout", description="유저를 일정 시간(분) 타임아웃합니다. (확인 버튼)")
+@app_commands.command(name="타임아웃", description="유저를 일정 시간(분) 타임아웃합니다. (확인 버튼)")
 @app_commands.describe(
     member="타임아웃할 멤버를 선택하세요.",
     duration="타임아웃 시간(분)",

@@ -1,0 +1,141 @@
+from __future__ import annotations
+import asyncio
+import discord
+import yt_dlp
+from music.cogs.state import GuildMusicState, MusicStateManager, Track
+
+YDL_OPTS = {
+    "format": "bestaudio/best",
+    "noplaylist": True,
+    "quiet": True,
+    "no_warnings": True,
+    "default_search": "ytsearch",
+    "source_address": "0.0.0.0",
+    'cookiefile': 'youtube.com_cookies.txt'
+}
+
+FFMPEG_OPTS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
+
+
+def _fetch_track(query: str, requester: discord.Member) -> Track | None:
+    """yt-dlp로 YouTube 검색 후 Track 객체 반환 (동기 함수 — executor에서 실행)"""
+    with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
+        try:
+            if query.startswith("http"):
+                info = ydl.extract_info(query, download=False)
+            else:
+                info = ydl.extract_info(f"ytsearch:{query}", download=False)
+                if info and "entries" in info:
+                    info = info["entries"][0]
+
+            if not info:
+                return None
+
+            return Track(
+                title=info.get("title", "알 수 없음"),
+                url=info["url"],
+                webpage_url=info.get("webpage_url", ""),
+                thumbnail=info.get("thumbnail", ""),
+                duration=info.get("duration", 0),
+                uploader=info.get("uploader", "알 수 없음"),
+                requester=requester,
+            )
+        except Exception:
+            return None
+
+
+async def fetch_track(query: str, requester: discord.Member) -> Track | None:
+    """비동기 래퍼"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _fetch_track, query, requester)
+
+
+def play_next(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.AbstractEventLoop):
+    """현재 곡이 끝난 뒤 호출되는 콜백 — 다음 곡 재생"""
+    manager = MusicStateManager()
+    state = manager.get(guild_id)
+
+    if not state.is_connected():
+        return
+
+    # --- 반복 재생 로직 수정 구간 ---
+    next_track = None
+
+    # 1. 한 곡 반복 (state.loop == 1)
+    if state.loop == 1 and state.current:
+        next_track = state.current
+
+    # 2. 전체 반복 (state.loop == 2) 또는 반복 없음 (state.loop == 0)
+    else:
+        if state.current:
+            if state.loop == 2:
+                # 방금 끝난 곡을 대기열의 가장 뒤로 추가 (순환)
+                state.queue.append(state.current)
+            else:
+                # 반복이 꺼진 경우 히스토리에 저장
+                state.history.append(state.current)
+
+        if state.queue:
+            # 대기열의 맨 앞 곡을 꺼내서 다음 재생 곡으로 설정
+            next_track = state.queue.popleft()
+        else:
+            # 대기열이 완전히 비어있는 경우
+            next_track = None
+
+    # 재생할 곡이 없는 경우 처리
+    if not next_track:
+        state.current = None
+        embed = discord.Embed(
+            title="✅ 재생 완료",
+            description="대기열이 모두 끝났어요.",
+            color=discord.Color.green(),
+        )
+        asyncio.run_coroutine_threadsafe(channel.send(embed=embed), bot_loop)
+        return
+
+    # 현재 재생 중인 곡 정보 업데이트
+    state.current = next_track
+    # ----------------------------
+
+    source = discord.PCMVolumeTransformer(
+        discord.FFmpegPCMAudio(next_track.url, **FFMPEG_OPTS),
+        volume=state.volume,
+    )
+
+    def after_playing(error):
+        if error:
+            embed = discord.Embed(
+                title="⚠️ 재생 오류",
+                description=str(error),
+                color=discord.Color.red(),
+            )
+            asyncio.run_coroutine_threadsafe(channel.send(embed=embed), bot_loop)
+
+        # 다음 곡 재생을 위해 play_next 재귀 호출
+        play_next(guild_id, channel, bot_loop)
+
+    # 오디오 재생 실행
+    state.voice_client.play(source, after=after_playing)
+
+    # 지금 재생 중 알림 전송
+    asyncio.run_coroutine_threadsafe(
+        channel.send(embed=now_playing_embed(next_track)), bot_loop
+    )
+
+
+def now_playing_embed(track: Track) -> discord.Embed:
+    mins, secs = divmod(track.duration, 60)
+    embed = discord.Embed(
+        title="🎵 지금 재생 중",
+        description=f"**[{track.title}]({track.webpage_url})**",
+        color=discord.Color.blurple(),
+    )
+    if track.thumbnail:
+        embed.set_thumbnail(url=track.thumbnail)
+    embed.add_field(name="길이", value=f"{mins}:{secs:02d}")
+    embed.add_field(name="업로더", value=track.uploader)
+    embed.add_field(name="등록자", value=track.requester.mention)
+    return embed

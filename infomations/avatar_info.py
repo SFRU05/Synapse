@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 import datetime
 
-@app_commands.command(name="avatar", description="사용자 아바타를 보여줍니다.")
+@app_commands.command(name="아바타", description="사용자 아바타를 보여줍니다.")
 @app_commands.describe(member="조회할 멤버를 선택하세요. (선택하지 않으면 자신의 아바타가 표시됩니다.)")
 async def avatar_slash(
     interaction: discord.Interaction,

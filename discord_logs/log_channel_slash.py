@@ -1,10 +1,9 @@
 import discord
 from discord import app_commands
-
 from logger_db import set_log_channel
 
 
-@app_commands.command(name="setlog", description="서버 로그용 채널을 지정합니다 (관리자만 가능)")
+@app_commands.command(name="로그 채널 설정", description="서버 로그용 채널을 지정합니다 (관리자만 가능)")
 @app_commands.describe(channel="로그를 보낼 텍스트 채널")
 async def setlog_slash(
     interaction: discord.Interaction,

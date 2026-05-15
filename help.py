@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 
-@app_commands.command(name="help", description="봇 명령어 도움말을 확인합니다.")
+@app_commands.command(name="도움", description="봇 명령어 도움말을 확인합니다.")
 @app_commands.describe(category="도움말 카테고리를 선택하세요.")
 @app_commands.choices(
     category=[

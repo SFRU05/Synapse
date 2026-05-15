@@ -396,11 +396,11 @@ class GiveawayModal(discord.ui.Modal, title="Giveaway 등록"):
         asyncio.create_task(delayed_announce(bot, give_id, minute*60))
         await interaction.response.send_message("이벤트가 생성되었습니다!", ephemeral=True)
 
-@discord.app_commands.command(name="giveway", description="Giveaway 정보를 등록합니다.")
+@discord.app_commands.command(name="이벤트", description="Giveaway 정보를 등록합니다.")
 async def giveway_slash(interaction: discord.Interaction):
     await interaction.response.send_modal(GiveawayModal())
 
-@discord.app_commands.command(name="giveway_list", description="모든 Giveaway를 확인합니다.")
+@discord.app_commands.command(name="이벤트 목록", description="모든 Giveaway를 확인합니다.")
 async def giveway_list_slash(interaction: discord.Interaction):
     data = get_all_giveaways()
     if not data:

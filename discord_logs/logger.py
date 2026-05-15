@@ -1,5 +1,4 @@
 import datetime
-import sqlite3
 import discord
 from logger_db import get_log_channel_id
 

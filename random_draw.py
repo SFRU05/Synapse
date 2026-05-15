@@ -36,7 +36,7 @@ class RandomDraw(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="draw", description="참가자 중 n명 랜덤 추첨")
+    @app_commands.command(name="추첨", description="참가자 중 n명 랜덤 추첨")
     @app_commands.describe(
         num_winners="당첨 인원수 (정수, 참가자 명수 이하)",
         names="참가자 이름들 (쉼표, 띄어쓰기, 슬래시 등으로 구분 가능)"

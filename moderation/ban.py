@@ -24,7 +24,7 @@ class BanConfirmView(discord.ui.View):
         self.stop()
         await interaction.response.defer(ephemeral=True)
 
-@app_commands.command(name="ban", description="멤버를 서버에서 차단합니다. (확인 버튼)")
+@app_commands.command(name="차단", description="멤버를 서버에서 차단합니다. (확인 버튼)")
 @app_commands.describe(
     member="차단할 멤버를 선택하세요.",
     reason="차단 사유. 기본값: 사유 없음"

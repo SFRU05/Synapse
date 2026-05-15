@@ -24,7 +24,7 @@ class KickConfirmView(discord.ui.View):
         self.stop()
         await interaction.response.defer(ephemeral=True)
 
-@app_commands.command(name="kick", description="멤버를 추방합니다. (확인 버튼)")
+@app_commands.command(name="추방", description="멤버를 추방합니다. (확인 버튼)")
 @app_commands.describe(
     member="추방할 멤버를 선택하세요.",
     reason="추방 사유. 기본값: 사유 없음"

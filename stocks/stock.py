@@ -274,7 +274,7 @@ class StockView(discord.ui.View):
             pass
 
 # --- 슬래시 커맨드 정의 ---
-@app_commands.command(name="stock", description="주식 시세와 차트 보기")
+@app_commands.command(name="주식", description="주식 시세와 차트 보기")
 @app_commands.describe(symbol="조회할 종목명/티커")
 @app_commands.choices(
     interval=[
