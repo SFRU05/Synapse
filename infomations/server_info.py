@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 import datetime
 
-@app_commands.command(name="서버 정보", description="이 서버의 정보를 보여줍니다.")
+@app_commands.command(name="서버정보", description="이 서버의 정보를 보여줍니다.")
 async def serverinfo_slash(interaction: discord.Interaction):
     guild = interaction.guild
     if not guild:

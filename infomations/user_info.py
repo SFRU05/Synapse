@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 
-@app_commands.command(name="유저 정보", description="사용자(자신/다른 유저)의 정보를 보여줍니다.")
+@app_commands.command(name="유저정보", description="사용자(자신/다른 유저)의 정보를 보여줍니다.")
 @app_commands.describe(member="정보를 확인할 멤버 (생략시 본인)")
 async def userinfo_slash(
     interaction: discord.Interaction,

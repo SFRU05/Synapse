@@ -400,7 +400,7 @@ class GiveawayModal(discord.ui.Modal, title="Giveaway 등록"):
 async def giveway_slash(interaction: discord.Interaction):
     await interaction.response.send_modal(GiveawayModal())
 
-@discord.app_commands.command(name="이벤트 목록", description="모든 Giveaway를 확인합니다.")
+@discord.app_commands.command(name="이벤트목록", description="모든 Giveaway를 확인합니다.")
 async def giveway_list_slash(interaction: discord.Interaction):
     data = get_all_giveaways()
     if not data:
