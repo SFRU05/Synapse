@@ -1,7 +1,8 @@
 from __future__ import annotations
 import discord
-from music.cogs.state import MusicStateManager
+from music.cogs.state import MusicStateManager, Track
 from music.cogs.core import fetch_track, play_next, now_playing_embed
+from music.cogs.recommender import get_artist_tracks
 
 playback_cmd = discord.app_commands.Group(name="재생", description="재생 관련 명령어")
 manager = MusicStateManager()
@@ -232,6 +233,71 @@ async def loop(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=LoopView(state), ephemeral=True)
 
 
+@playback_cmd.command(name="자동재생", description="작곡가의 다른 음악을 자동재생합니다.")
+async def autoplay(interaction: discord.Interaction):
+    await interaction.response.defer()
+    state = manager.get(interaction.guild_id)
+
+    if not state.current:
+        embed = _footer(discord.Embed(title="❌ 오류", description="먼저 곡을 재생해주세요.", color=discord.Color.red()),
+                        interaction)
+        return await interaction.followup.send(embed=embed)
+
+    state.autoplay = not state.autoplay
+
+    if state.autoplay:
+        state.seed_track = state.current  # 현재 곡을 기준으로 설정
+        artist_name = state.current.uploader  # 업로더(작곡가)명 사용
+
+        # 자동재생 활성화 시 작곡가의 다른 곡 5개를 대기열에 추가
+        try:
+            # 히스토리와 현재 대기열의 곡 제목 수집 (제외할 곡들)
+            excluded_titles = set()
+            for track in state.history:
+                excluded_titles.add(track.title)
+            for track in state.queue:
+                excluded_titles.add(track.title)
+            if state.current:
+                excluded_titles.add(state.current.title)
+
+            recommendations = await get_artist_tracks(
+                artist_name,
+                limit=5,
+                exclude_titles=list(excluded_titles)
+            )
+
+            if recommendations:
+                for rec in recommendations:
+                    recommended_track = Track(
+                        title=rec["title"],
+                        url=rec["url"],
+                        webpage_url=rec["webpage_url"],
+                        thumbnail=rec["thumbnail"],
+                        duration=rec["duration"],
+                        uploader=rec["uploader"],
+                        requester=state.seed_track.requester,
+                    )
+                    state.queue.append(recommended_track)
+                print(f"✅ {artist_name}의 곡 {len(recommendations)}개 대기열에 추가됨")
+        except Exception as e:
+            print(f"작곡가 음악 추가 오류: {e}")
+
+        embed = discord.Embed(
+            title="✅ 자동재생 활성화",
+            description=f"**{state.current.uploader}**의 다른 음악을 자동으로 재생할게요.\n곡 5개를 대기열에 추가했습니다.",
+            color=discord.Color.green(),
+        )
+    else:
+        embed = discord.Embed(
+            title="❌ 자동재생 비활성화",
+            description="더 이상 자동재생하지 않습니다.",
+            color=discord.Color.red(),
+        )
+
+    _footer(embed, interaction)
+    await interaction.followup.send(embed=embed)
+
+
 @playback_cmd.command(name="나가", description="봇을 음성 채널에서 내보냅니다.")
 async def leave(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
@@ -239,6 +305,7 @@ async def leave(interaction: discord.Interaction):
 
     state.queue.clear()
     state.current = None
+    state.autoplay = False
     if state.voice_client:
         await state.voice_client.disconnect()
         state.voice_client = None

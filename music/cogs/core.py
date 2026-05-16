@@ -2,7 +2,8 @@ from __future__ import annotations
 import asyncio
 import discord
 import yt_dlp
-from music.cogs.state import GuildMusicState, MusicStateManager, Track
+from music.cogs.state import MusicStateManager, Track
+from music.cogs.recommender import get_artist_tracks
 
 YDL_OPTS = {
     "format": "bestaudio/best",
@@ -61,9 +62,6 @@ def play_next(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.Abs
     if not state.is_connected():
         return
 
-    # --- 반복 재생 로직 수정 구간 ---
-    next_track = None
-
     # 1. 한 곡 반복 (state.loop == 1)
     if state.loop == 1 and state.current:
         next_track = state.current
@@ -87,14 +85,71 @@ def play_next(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.Abs
 
     # 재생할 곡이 없는 경우 처리
     if not next_track:
-        state.current = None
-        embed = discord.Embed(
-            title="✅ 재생 완료",
-            description="대기열이 모두 끝났어요.",
-            color=discord.Color.green(),
-        )
-        asyncio.run_coroutine_threadsafe(channel.send(embed=embed), bot_loop)
-        return
+        # 자동재생 확인
+        if state.autoplay and state.seed_track:
+            # 자동재생 활성화 + seed 곡이 있으면 작곡가의 곡 자동 추가
+            async def add_artist_tracks():
+                try:
+                    artist_name = state.seed_track.uploader
+
+                    # 히스토리와 현재 대기열의 곡 제목 수집 (제외할 곡들)
+                    excluded_titles = set()
+                    for track in state.history:
+                        excluded_titles.add(track.title)
+                    for track in state.queue:
+                        excluded_titles.add(track.title)
+                    if state.current:
+                        excluded_titles.add(state.current.title)
+
+                    recommendations = await get_artist_tracks(artist_name, limit=5)
+                    if recommendations:
+                        for rec in recommendations:
+                            recommended_track = Track(
+                                title=rec["title"],
+                                url=rec["url"],
+                                webpage_url=rec["webpage_url"],
+                                thumbnail=rec["thumbnail"],
+                                duration=rec["duration"],
+                                uploader=rec["uploader"],
+                                requester=state.seed_track.requester,
+                            )
+                            state.queue.append(recommended_track)
+
+                        # 다시 play_next 호출해서 재생
+                        play_next(guild_id, channel, bot_loop)
+
+                        print(f"✅ 자동재생: {artist_name}의 곡 {len(recommendations)}개 추가됨")
+                    else:
+                        # 추천곡을 찾을 수 없는 경우
+                        state.current = None
+                        embed = discord.Embed(
+                            title="✅ 재생 완료",
+                            description="대기열이 모두 끝났어요.",
+                            color=discord.Color.green(),
+                        )
+                        asyncio.run_coroutine_threadsafe(channel.send(embed=embed), bot_loop)
+                except Exception as e:
+                    print(f"자동재생 오류: {e}")
+                    state.current = None
+                    embed = discord.Embed(
+                        title="✅ 재생 완료",
+                        description="대기열이 모두 끝났어요.",
+                        color=discord.Color.green(),
+                    )
+                    asyncio.run_coroutine_threadsafe(channel.send(embed=embed), bot_loop)
+
+            asyncio.run_coroutine_threadsafe(add_artist_tracks(), bot_loop)
+            return
+        else:
+            # 자동재생이 꺼져 있거나 seed_track이 없는 경우
+            state.current = None
+            embed = discord.Embed(
+                title="✅ 재생 완료",
+                description="대기열이 모두 끝났어요.",
+                color=discord.Color.green(),
+            )
+            asyncio.run_coroutine_threadsafe(channel.send(embed=embed), bot_loop)
+            return
 
     # 현재 재생 중인 곡 정보 업데이트
     state.current = next_track

@@ -1,7 +1,6 @@
 from __future__ import annotations
-import asyncio
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import discord
 
 
@@ -25,6 +24,9 @@ class GuildMusicState:
         self.loop: bool = 0
         self.voice_client: discord.VoiceClient | None = None
         self._play_next_callback: callable | None = None  # MusicCore에서 주입
+
+        self.autoplay: bool = False
+        self.seed_track: Track | None = None  # 추천의 기준이 되는 곡
 
     def is_connected(self) -> bool:
         return self.voice_client is not None and self.voice_client.is_connected()

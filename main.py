@@ -96,25 +96,6 @@ async def ping(ctx):
     embed = discord.Embed(title="🏓 Pong!", description=f"현재 핑: {latency}ms", color=discord.Color.green())
     await ctx.send(embed=embed)
 
-# clear 명령어 - 지정한 개수만큼 메시지 삭제
-@bot.command()
-async def clear(ctx, amount: int = None):
-    if amount is None:
-        await ctx.send("삭제할 메시지 개수를 입력하세요. `-clear <개수>`")
-        return
-    await ctx.channel.purge(limit=amount + 1)
-    deleted = await ctx.channel.purge(limit=amount + 1)
-    await ctx.send(f"요청 **{amount}**개 중 **{len(deleted) - 1}개**의 메시지를 삭제했습니다.")
-
-@bot.command(name="log")
-async def log_command(ctx):
-    embed = discord.Embed(
-        title="로그 설정 방법",
-        description="#logs_discord 채팅 채널을 생성하세요.",
-        color=discord.Color.orange()
-    )
-    await ctx.send(embed=embed)
-
 # 서버 로그 표시
 @bot.event
 async def on_message_delete(message):
@@ -179,13 +160,14 @@ class BotIntroView(discord.ui.View):
 async def on_message(message: discord.Message):
     if message.author.bot:
         return
-    BOT_MENTION = message.guild.me.mention if message.guild else bot.user.mention
+    bot_mention = message.guild.me.mention if message.guild else bot.user.mention
     content = message.content.strip()
-    if content == BOT_MENTION:
+    if content == bot_mention:
         embed = discord.Embed(
             title="안녕하세요! 👋",
             description=(
-                f"다양한 기능들을 수행하는 디스코드 봇, Syanpse입니다.\n\n"
+                f"다양한 기능들을 수행하는 디스코드 봇, Syna"
+                f"pse입니다.\n\n"
                 f"`/help`를 입력하여 명령어를 알아보세요!"
             ),
             color=discord.Color.blurple(),

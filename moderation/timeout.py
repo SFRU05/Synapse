@@ -15,13 +15,13 @@ class TimeoutConfirmView(discord.ui.View):
         return interaction.user.id == self.moderator.id
 
     @discord.ui.button(label="✅ 예", style=discord.ButtonStyle.success)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def confirm(self, interaction: discord.Interaction):
         self.result = "confirm"
         self.stop()
         await interaction.response.defer(ephemeral=False)
 
     @discord.ui.button(label="❌ 아니요", style=discord.ButtonStyle.danger)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def cancel(self, interaction: discord.Interaction):
         self.result = "cancel"
         self.stop()
         await interaction.response.defer(ephemeral=True)
@@ -37,13 +37,13 @@ class PardonConfirmView(discord.ui.View):
         return interaction.user.id == self.moderator.id
 
     @discord.ui.button(label="✅ 예", style=discord.ButtonStyle.success)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def confirm(self, interaction: discord.Interaction):
         self.result = "confirm"
         self.stop()
         await interaction.response.defer(ephemeral=False)
 
     @discord.ui.button(label="❌ 아니요", style=discord.ButtonStyle.danger)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def cancel(self, interaction: discord.Interaction):
         self.result = "cancel"
         self.stop()
         await interaction.response.defer(ephemeral=True)
