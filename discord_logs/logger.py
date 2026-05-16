@@ -1,12 +1,17 @@
 import datetime
 import discord
-from logger_db import get_log_channel_id
+from .log_settings_db import get_log_channel_id, get_log_settings
 
 
 # 메시지 삭제 로그
 async def log_message_delete(message: discord.Message):
     if message.guild is None or message.author.bot:
         return
+
+    settings = get_log_settings(message.guild.id)
+    if not settings["message_delete"]:
+        return
+
     log_channel_id = get_log_channel_id(message.guild.id)
     if not log_channel_id: return
     log_channel = message.guild.get_channel(log_channel_id)
@@ -27,12 +32,18 @@ async def log_message_delete(message: discord.Message):
     embed.add_field(name="채널", value=message.channel.mention, inline=True)
     await log_channel.send(embed=embed)
 
+
 # 메시지 수정 로그
 async def log_message_edit(before: discord.Message, after: discord.Message):
     if before.guild is None or before.author.bot:
         return
     if before.content == after.content:
         return
+
+    settings = get_log_settings(before.guild.id)
+    if not settings["message_edit"]:
+        return
+
     log_channel_id = get_log_channel_id(before.guild.id)
     if not log_channel_id: return
     log_channel = before.guild.get_channel(log_channel_id)
@@ -54,14 +65,19 @@ async def log_message_edit(before: discord.Message, after: discord.Message):
     embed.set_footer(text=f"ID: {after.author.id}")
     await log_channel.send(embed=embed)
 
+
 # 멤버 입장 로그
 async def log_member_join(member: discord.Member):
+    settings = get_log_settings(member.guild.id)
+    if not settings["member_join"]:
+        return
+
     log_channel_id = get_log_channel_id(member.guild.id)
     if not log_channel_id: return
     log_channel = member.guild.get_channel(log_channel_id)
     if not log_channel: return
     embed = discord.Embed(
-        title="🔼 멤버 입장",
+        title="➡️ 멤버 입장",
         description=f"{member.mention}님이 서버에 들어왔습니다.",
         color=discord.Color.green(),
         timestamp=datetime.datetime.now()
@@ -71,14 +87,19 @@ async def log_member_join(member: discord.Member):
     embed.add_field(name="계정 생성일", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
     await log_channel.send(embed=embed)
 
+
 # 멤버 퇴장 로그
 async def log_member_remove(member: discord.Member):
+    settings = get_log_settings(member.guild.id)
+    if not settings["member_remove"]:
+        return
+
     log_channel_id = get_log_channel_id(member.guild.id)
     if not log_channel_id: return
     log_channel = member.guild.get_channel(log_channel_id)
     if not log_channel: return
     embed = discord.Embed(
-        title="🔽 멤버 퇴장",
+        title="⬅️ 멤버 퇴장",
         description=f"{member.mention}님이 서버에서 나갔습니다.",
         color=discord.Color.orange(),
         timestamp=datetime.datetime.now()
@@ -87,10 +108,16 @@ async def log_member_remove(member: discord.Member):
     embed.set_footer(text=f"ID: {member.id}")
     await log_channel.send(embed=embed)
 
+
 # 역할 변경 로그 (멤버 역할 변화)
 async def log_member_role_update(before: discord.Member, after: discord.Member):
     if before.guild is None:
         return
+
+    settings = get_log_settings(before.guild.id)
+    if not settings["member_role_update"]:
+        return
+
     log_channel_id = get_log_channel_id(before.guild.id)
     if not log_channel_id: return
     log_channel = before.guild.get_channel(log_channel_id)
@@ -119,10 +146,16 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
         embed.set_footer(text=f"ID: {after.id}")
         await log_channel.send(embed=embed)
 
+
 # 역할 자체 변경 로그
 async def log_role_update(before: discord.Role, after: discord.Role):
     if before.guild is None:
         return
+
+    settings = get_log_settings(before.guild.id)
+    if not settings["role_update"]:
+        return
+
     log_channel_id = get_log_channel_id(before.guild.id)
     if not log_channel_id: return
     log_channel = before.guild.get_channel(log_channel_id)
@@ -153,9 +186,15 @@ async def log_role_update(before: discord.Role, after: discord.Role):
     embed.set_footer(text=f"ID: {after.id}")
     await log_channel.send(embed=embed)
 
+
 # 채널 생성 로그
 async def log_channel_create(channel: discord.abc.GuildChannel):
     if channel.guild is None: return
+
+    settings = get_log_settings(channel.guild.id)
+    if not settings["channel_create"]:
+        return
+
     log_channel_id = get_log_channel_id(channel.guild.id)
     if not log_channel_id: return
     log_channel = channel.guild.get_channel(log_channel_id)
@@ -169,9 +208,15 @@ async def log_channel_create(channel: discord.abc.GuildChannel):
     embed.set_footer(text=f"ID: {channel.id}")
     await log_channel.send(embed=embed)
 
+
 # 채널 삭제 로그
 async def log_channel_delete(channel: discord.abc.GuildChannel):
     if channel.guild is None: return
+
+    settings = get_log_settings(channel.guild.id)
+    if not settings["channel_delete"]:
+        return
+
     log_channel_id = get_log_channel_id(channel.guild.id)
     if not log_channel_id: return
     log_channel = channel.guild.get_channel(log_channel_id)
@@ -185,9 +230,15 @@ async def log_channel_delete(channel: discord.abc.GuildChannel):
     embed.set_footer(text=f"ID: {channel.id}")
     await log_channel.send(embed=embed)
 
+
 # 채널 업데이트 로그
 async def log_channel_update(before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
     if before.guild is None: return
+
+    settings = get_log_settings(before.guild.id)
+    if not settings["channel_update"]:
+        return
+
     log_channel_id = get_log_channel_id(before.guild.id)
     if not log_channel_id: return
     log_channel = before.guild.get_channel(log_channel_id)
@@ -196,7 +247,8 @@ async def log_channel_update(before: discord.abc.GuildChannel, after: discord.ab
     if before.name != after.name:
         changes.append(("이름", f"`{before.name}` → `{after.name}`"))
     if getattr(before, "topic", None) != getattr(after, "topic", None):
-        changes.append(("주제", f"{getattr(before, 'topic', None) or '(없음)'} → {getattr(after, 'topic', None) or '(없음)'}"))
+        changes.append(
+            ("주제", f"{getattr(before, 'topic', None) or '(없음)'} → {getattr(after, 'topic', None) or '(없음)'}"))
     if getattr(before, "position", None) != getattr(after, "position", None):
         changes.append(("위치", f"{getattr(before, 'position', None)} → {getattr(after, 'position', None)}"))
     if not changes:
@@ -210,4 +262,54 @@ async def log_channel_update(before: discord.abc.GuildChannel, after: discord.ab
     for name, value in changes:
         embed.add_field(name=name, value=value, inline=False)
     embed.set_footer(text=f"ID: {after.id}")
+    await log_channel.send(embed=embed)
+
+
+# 역할 생성 로그
+async def log_role_create(role: discord.Role):
+    if role.guild is None:
+        return
+
+    settings = get_log_settings(role.guild.id)
+    if not settings["role_create"]:
+        return
+
+    log_channel_id = get_log_channel_id(role.guild.id)
+    if not log_channel_id: return
+    log_channel = role.guild.get_channel(log_channel_id)
+    if not log_channel: return
+
+    embed = discord.Embed(
+        title="➕ 역할 생성",
+        description=f"{role.mention} 역할이 생성되었습니다.",
+        color=discord.Color.green(),
+        timestamp=datetime.datetime.now()
+    )
+    embed.add_field(name="역할명", value=role.name, inline=True)
+    embed.add_field(name="색상", value=f"#{role.color.value:06x}", inline=True)
+    embed.set_footer(text=f"ID: {role.id}")
+    await log_channel.send(embed=embed)
+
+
+# 역할 삭제 로그
+async def log_role_delete(role: discord.Role):
+    if role.guild is None:
+        return
+
+    settings = get_log_settings(role.guild.id)
+    if not settings["role_delete"]:
+        return
+
+    log_channel_id = get_log_channel_id(role.guild.id)
+    if not log_channel_id: return
+    log_channel = role.guild.get_channel(log_channel_id)
+    if not log_channel: return
+
+    embed = discord.Embed(
+        title="🗑️ 역할 삭제",
+        description=f"`{role.name}`({role.id}) 역할이 삭제되었습니다.",
+        color=discord.Color.red(),
+        timestamp=datetime.datetime.now()
+    )
+    embed.set_footer(text=f"ID: {role.id}")
     await log_channel.send(embed=embed)

@@ -16,17 +16,17 @@ from discord.ext import tasks
 from stocks.stock import stock_slash
 from stocks.freq_stock import favorites_slash
 import giveways
-from logger_db import ensure_db
 
 from music.cogs.playback import playback_cmd
 from music.cogs.queue import queue_cmd
 from music.cogs.volume import volume_cmd
 
-from discord_logs.log_channel_slash import setlog_slash
+from discord_logs.log_channel_slash import setlog_slash, logsettings_slash
+from discord_logs.log_settings_db import ensure_db
 from discord_logs.logger import (
     log_message_delete, log_message_edit, log_member_join, log_member_remove,
     log_member_role_update, log_role_update,
-    log_channel_create, log_channel_delete, log_channel_update,
+    log_channel_create, log_channel_delete, log_channel_update, log_role_create, log_role_delete,
 )
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
@@ -62,6 +62,7 @@ bot.tree.add_command(info_slash) # 봇 정보 보여주기
 bot.tree.add_command(serverinfo_slash) # 서버 정보 보여주기
 bot.tree.add_command(userinfo_slash) # 유저 정보 보여주기
 bot.tree.add_command(setlog_slash) # 로그 채널 설정
+bot.tree.add_command(logsettings_slash) 
 bot.tree.add_command(giveways.giveway_slash) # Giveaway 명령어
 bot.tree.add_command(giveways.giveway_list_slash) # Giveaway 리스트 명령어
 bot.tree.add_command(playback_cmd)  # 재생 관련 명령어
@@ -139,6 +140,14 @@ async def on_guild_channel_update(before, after):
 @bot.event
 async def on_guild_role_update(before: discord.Role, after: discord.Role):
     await log_role_update(before, after)
+
+@bot.event
+async def on_guild_role_create(role):
+    await log_role_create(role)
+
+@bot.event
+async def on_guild_role_delete(role):
+    await log_role_delete(role)
 
 class BotIntroView(discord.ui.View):
     def __init__(self):
