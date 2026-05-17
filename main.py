@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import os
 from help import help_slash
 from infomations.bot_info import info_slash
@@ -12,7 +12,6 @@ from moderation.timeout import timeout_slash, pardon_slash
 from moderation.ban import ban_slash
 from dotenv import load_dotenv
 from itertools import cycle
-from discord.ext import tasks
 from stocks.stock import stock_slash
 from stocks.freq_stock import favorites_slash
 import giveways
@@ -75,6 +74,7 @@ async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
     await bot.tree.sync() # 슬래시 명령어 동기화
     await giveways.scheduled_giveaway_announce(bot)
+    await bot.load_extension("develop_function.developer_commands")
     change_status.start()
 
 @tasks.loop(seconds=10) # n초마다 다음 메시지 출력
