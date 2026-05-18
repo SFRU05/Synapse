@@ -15,7 +15,7 @@ class RerollView(discord.ui.View):
     @discord.ui.button(label="🔄 재추첨", style=discord.ButtonStyle.primary)
     async def reroll(self, interaction: discord.Interaction, button: discord.ui.Button):   # <--- button 추가!
         if interaction.user.id != self.orig_user.id:
-            await interaction.response.send_message("재추첨은 추첨 시작자만 사용할 수 있습니다!", ephemeral=True)
+            await interaction.response.send_message("재추첨은 추첨 시작자만 사용할 수 있어요!", ephemeral=True)
             return
         # 동일 당첨자 재방지: 전부 과거 당첨자면 전체 풀로 롤링
         available = [n for n in self.names if n not in self.last_winners]
@@ -59,7 +59,7 @@ class RandomDraw(commands.Cog):
             return
         if num_winners > len(name_list):
             await interaction.response.send_message(
-                "당첨 인원은 참가자 수보다 많을 수 없습니다.", ephemeral=True)
+                "당첨 인원은 참가자 수보다 많을 수 없어요.", ephemeral=True)
             return
 
         await interaction.response.defer(thinking=True)
@@ -75,7 +75,7 @@ class RandomDraw(commands.Cog):
         )
         embed.add_field(name="추첨 인원", value=", ".join(name_list), inline=False)
         embed.add_field(name="당첨자", value=", ".join(winners), inline=False)
-        embed.set_footer(text="재추첨은 아래 버튼을 눌러주세요")
+        embed.set_footer(text="재추첨은 아래 버튼을 눌러주세요.")
         await interaction.followup.send(embed=embed, view=view)
 
 async def setup(bot):
