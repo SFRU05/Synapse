@@ -102,7 +102,7 @@ class DateSelect(discord.ui.Select):
             d = today - datetime.timedelta(days=i)
             label = d.strftime("%Y-%m-%d")
             options.append(discord.SelectOption(label=label, value=label))
-        super().__init__(placeholder="날짜 선택", min_values=1, max_values=1, options=options, row=0)
+        super().__init__(placeholder="조회할 날짜를 선택해주세요!", min_values=1, max_values=1, options=options, row=0)
 
     async def callback(self, interaction: discord.Interaction):
         self.parent_view.page = 0
@@ -132,10 +132,10 @@ class StockView(discord.ui.View):
         for item in self.children:
             if isinstance(item, discord.ui.Button) and getattr(item, "custom_id", None) == "fav":
                 if self.is_fav_now:
-                    item.label = "🗑️ 관심종목 삭제"
+                    item.label = "🗑️ 관심종목 삭제하기"
                     item.style = discord.ButtonStyle.danger
                 else:
-                    item.label = "⭐ 관심종목 추가"
+                    item.label = "⭐ 관심종목 추가하기"
                     item.style = discord.ButtonStyle.success
 
     async def update_embed(self, interaction=None):
@@ -182,7 +182,7 @@ class StockView(discord.ui.View):
             sparkline = "차트 데이터 없음"
 
         embed = discord.Embed(
-            title=f"{self.name} {start_str} 시간별 등락 및 주가 (page {self.page+1})",
+            title=f"{self.name} {start_str} 시간별 등락 및 주가에요! ({self.page+1}페이지)",
             color=discord.Color.blue()
         )
         embed.add_field(
@@ -256,12 +256,12 @@ class StockView(discord.ui.View):
             add_favorite(self.user_id, self.symbol, self.name)
             self.is_fav_now = True
             self.update_fav_label()
-            await interaction.response.edit_message(content="관심종목에 추가되었습니다.", embed=None, view=self)
+            await interaction.response.edit_message(content="관심종목에 추가되었어요.", embed=None, view=self)
         else:
             remove_favorite(self.user_id, self.symbol)
             self.is_fav_now = False
             self.update_fav_label()
-            await interaction.response.edit_message(content="관심종목에서 삭제되었습니다.", embed=None, view=self)
+            await interaction.response.edit_message(content="관심종목에서 삭제되었어요.", embed=None, view=self)
 
     async def interaction_check(self, interaction):
         return interaction.user.id == int(self.user_id)
@@ -278,11 +278,11 @@ class StockView(discord.ui.View):
 @app_commands.describe(symbol="조회할 종목명/티커")
 @app_commands.choices(
     interval=[
-        app_commands.Choice(name="1분봉", value="1m"),
-        app_commands.Choice(name="5분봉", value="5m"),
-        app_commands.Choice(name="15분봉", value="15m"),
-        app_commands.Choice(name="30분봉", value="30m"),
-        app_commands.Choice(name="1시간봉", value="60m"),
+        app_commands.Choice(name="1분", value="1m"),
+        app_commands.Choice(name="5분", value="5m"),
+        app_commands.Choice(name="15분", value="15m"),
+        app_commands.Choice(name="30분", value="30m"),
+        app_commands.Choice(name="1시간", value="60m"),
     ]
 )
 async def stock_slash(
@@ -294,7 +294,7 @@ async def stock_slash(
     actual_interval = interval.value if interval else "60m"
     query_symbol = resolve_symbol(symbol)
     if not query_symbol:
-        await interaction.followup.send(f"**{symbol}**: 등록된(지원되는) 종목명이 아닙니다.")
+        await interaction.followup.send(f"**{symbol}**: 등록된(지원되는) 종목명이 아니에요.")
         return
 
     try:
@@ -307,7 +307,7 @@ async def stock_slash(
     short_name = info.get('shortName')
     price = info.get('regularMarketPrice')
     if not short_name or price is None:
-        await interaction.followup.send(f"**{symbol}**: 유효하지 않은 종목(심볼)입니다. 실제 상장 종목이 맞는지 확인하세요.")
+        await interaction.followup.send(f"**{symbol}**: 유효하지 않은 종목(심볼)이에요. 실제 상장 종목이 맞는지 확인해주세요!")
         return
 
     currency = info.get('currency', '')

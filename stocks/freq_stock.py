@@ -29,7 +29,7 @@ async def favorites_slash(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     favs = get_favorites(user_id)
     if not favs:
-        await interaction.followup.send("관심종목이 없습니다. `/stock`으로 관심종목을 추가해보세요.")
+        await interaction.followup.send("관심종목이 없어요. `/stock`으로 관심종목을 추가해보세요!")
         return
     price_list = []
     for symbol, name in favs:
@@ -47,7 +47,7 @@ async def favorites_slash(interaction: discord.Interaction):
         p_str = f"{price:,.2f}{currency}" if currency and price else "정보없음"
         result_list.append(f"`{symbol}` `{name}`  |  **{p_str}**")
     embed = discord.Embed(
-        title=f"{interaction.user.display_name} 님의 관심 종목",
+        title=f"{interaction.user.display_name} 님의 관심 종목이에요!",
         description="\n".join(result_list),
         color=discord.Color.gold()
     )

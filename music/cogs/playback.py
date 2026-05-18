@@ -4,6 +4,8 @@ from music.cogs.state import MusicStateManager, Track
 from music.cogs.core import fetch_track, play_next, now_playing_embed
 from music.cogs.recommender import get_artist_tracks
 
+from music.cogs.core import start_voice_monitoring
+
 playback_cmd = discord.app_commands.Group(name="재생", description="재생 관련 명령어")
 manager = MusicStateManager()
 
@@ -46,7 +48,6 @@ class LoopSelect(discord.ui.Select):
         super().__init__(placeholder="반복 모드를 선택하세요...", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        # 조작 시점에 다시 한번 채널 확인
         if not await _check_voice_connection(interaction):
             return
 
@@ -85,6 +86,9 @@ async def play(interaction: discord.Interaction, query: str):
         state.voice_client = await interaction.user.voice.channel.connect(self_deaf=True)
     elif interaction.user.voice.channel != state.voice_client.channel:
         await state.voice_client.move_to(interaction.user.voice.channel)
+
+    # ⭐ [수정] 음성 연결이 완료된 후 모니터링 함수를 실행합니다.
+    start_voice_monitoring(interaction.guild_id, interaction.channel, interaction.client.loop)
 
     searching_embed = _footer(discord.Embed(title="🔍 검색 중...", description=f"`{query}`", color=discord.Color.blurple()),
                               interaction)
@@ -229,7 +233,6 @@ async def loop(interaction: discord.Interaction):
         description=f"현재 설정: **{current_status}**\n아래 메뉴에서 변경할 모드를 선택해주세요.",
         color=discord.Color.blurple()
     )
-    # 이 명령어는 ephemeral=True를 쓰면 본인만 메뉴가 보입니다. 취향껏 설정하세요.
     await interaction.response.send_message(embed=embed, view=LoopView(state), ephemeral=True)
 
 
@@ -246,12 +249,10 @@ async def autoplay(interaction: discord.Interaction):
     state.autoplay = not state.autoplay
 
     if state.autoplay:
-        state.seed_track = state.current  # 현재 곡을 기준으로 설정
-        artist_name = state.current.uploader  # 업로더(작곡가)명 사용
+        state.seed_track = state.current
+        artist_name = state.current.uploader
 
-        # 자동재생 활성화 시 작곡가의 다른 곡 5개를 대기열에 추가
         try:
-            # 히스토리와 현재 대기열의 곡 제목 수집 (제외할 곡들)
             excluded_titles = set()
             for track in state.history:
                 excluded_titles.add(track.title)

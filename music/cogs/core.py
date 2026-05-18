@@ -5,6 +5,9 @@ import yt_dlp
 from music.cogs.state import MusicStateManager, Track
 from music.cogs.recommender import get_artist_tracks
 
+# 음성 채널 모니터링 타이머
+voice_channel_timers = {}
+
 YDL_OPTS = {
     "format": "bestaudio/best",
     "noplaylist": True,
@@ -54,6 +57,65 @@ async def fetch_track(query: str, requester: discord.Member) -> Track | None:
     return await loop.run_in_executor(None, _fetch_track, query, requester)
 
 
+async def monitor_voice_channel(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.AbstractEventLoop):
+    """음성 채널 모니터링 - 사람이 없으면 나가기"""
+    manager = MusicStateManager()
+    state = manager.get(guild_id)
+
+    # 모니터링 주기 (30초마다 체크)
+    while state.is_connected():
+        try:
+            # 음성 채널에 사람이 있는지 확인 (봇 제외)
+            if state.voice_client and state.voice_client.channel:
+                members_in_channel = [m for m in state.voice_client.channel.members if not m.bot]
+
+                # 사람이 없으면 나가기
+                if not members_in_channel:
+                    embed = discord.Embed(
+                        title="👋 음성 채널 비어있음",
+                        description="음성 채널",
+                        color=discord.Color.orange(),
+                    )
+                    await channel.send(embed=embed)
+
+                    # 상태 초기화
+                    state.queue.clear()
+                    state.current = None
+                    state.autoplay = False
+                    await state.voice_client.disconnect()
+                    state.voice_client = None
+                    break
+
+            await asyncio.sleep(5)
+
+        except Exception as e:
+            print(f"음성 채널 모니터링 오류: {e}")
+            break
+
+    # 타이머 정리
+    if guild_id in voice_channel_timers:
+        del voice_channel_timers[guild_id]
+
+
+def start_voice_monitoring(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.AbstractEventLoop):
+    """음성 채널 모니터링 시작"""
+    if guild_id not in voice_channel_timers:
+        task = asyncio.ensure_future(
+            monitor_voice_channel(guild_id, channel, bot_loop),
+            loop=bot_loop
+        )
+        voice_channel_timers[guild_id] = task
+
+
+def stop_voice_monitoring(guild_id: int):
+    """음성 채널 모니터링 중지"""
+    if guild_id in voice_channel_timers:
+        task = voice_channel_timers[guild_id]
+        if not task.done():
+            task.cancel()
+        del voice_channel_timers[guild_id]
+
+
 def play_next(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.AbstractEventLoop):
     """현재 곡이 끝난 뒤 호출되는 콜백 — 다음 곡 재생"""
     manager = MusicStateManager()
@@ -101,7 +163,8 @@ def play_next(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.Abs
                     if state.current:
                         excluded_titles.add(state.current.title)
 
-                    recommendations = await get_artist_tracks(artist_name, limit=5)
+                    recommendations = await get_artist_tracks(artist_name, limit=5,
+                                                              exclude_titles=list(excluded_titles))
                     if recommendations:
                         for rec in recommendations:
                             recommended_track = Track(
@@ -154,6 +217,9 @@ def play_next(guild_id: int, channel: discord.TextChannel, bot_loop: asyncio.Abs
     # 현재 재생 중인 곡 정보 업데이트
     state.current = next_track
     # ----------------------------
+
+    # 음성 채널 모니터링 시작
+    start_voice_monitoring(guild_id, channel, bot_loop)
 
     source = discord.PCMVolumeTransformer(
         discord.FFmpegPCMAudio(next_track.url, **FFMPEG_OPTS),
