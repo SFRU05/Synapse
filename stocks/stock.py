@@ -16,7 +16,7 @@ def build_name_to_symbol_map():
     ]
     for filename, market_suffix in krx_files:
         if not os.path.exists(filename):
-            print(f"{filename} 파일이 없습니다! (KRX 자동 매핑 일부 제한)")
+            print(f"{filename} 파일이 없어요! (KRX 자동 매핑 일부 제한)")
             continue
         try:
             df = pd.read_html(filename, header=0, encoding="euc-kr")[0]
@@ -182,7 +182,7 @@ class StockView(discord.ui.View):
             sparkline = "차트 데이터 없음"
 
         embed = discord.Embed(
-            title=f"{self.name} {start_str} 시간별 등락 및 주가에요! ({self.page+1}페이지)",
+            title=f"{self.name} {start_str} 시간별 등락 및 주가예요! ({self.page+1}페이지)",
             color=discord.Color.blue()
         )
         embed.add_field(
