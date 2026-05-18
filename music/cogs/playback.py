@@ -28,7 +28,7 @@ async def _check_voice_connection(interaction: discord.Interaction) -> bool:
 
     state = manager.get(interaction.guild_id)
     if state.voice_client and interaction.user.voice.channel != state.voice_client.channel:
-        embed = _footer(discord.Embed(title="❌ 오류", description="봇과 같은 음성 채널에 있어야 합니다.", color=discord.Color.red()),
+        embed = _footer(discord.Embed(title="❌ 오류", description="봇과 같은 음성 채널에 있어야 해요.", color=discord.Color.red()),
                         interaction)
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return False
@@ -41,9 +41,9 @@ class LoopSelect(discord.ui.Select):
     def __init__(self, state):
         self.state = state
         options = [
-            discord.SelectOption(label="반복 끔", description="반복 재생을 하지 않습니다.", emoji="➡️", value="0"),
-            discord.SelectOption(label="1곡 반복", description="현재 곡을 계속 재생합니다.", emoji="🔂", value="1"),
-            discord.SelectOption(label="전체 반복", description="대기열 전체를 반복합니다.", emoji="🔁", value="2")
+            discord.SelectOption(label="반복 끔", description="반복 재생을 하지 않아요.", emoji="➡️", value="0"),
+            discord.SelectOption(label="1곡 반복", description="현재 곡을 계속 재생해요.", emoji="🔂", value="1"),
+            discord.SelectOption(label="전체 반복", description="대기열 전체를 반복해요.", emoji="🔁", value="2")
         ]
         super().__init__(placeholder="반복 모드를 선택하세요...", options=options)
 
@@ -57,7 +57,7 @@ class LoopSelect(discord.ui.Select):
 
         embed = discord.Embed(
             title="🔁 반복 설정 완료",
-            description=f"반복 모드가 **{selected_status}**으로 변경되었습니다.",
+            description=f"반복 모드가 **{selected_status}**으로 변경되었어요.",
             color=discord.Color.green()
         )
         await interaction.response.edit_message(embed=embed, view=None)
@@ -71,7 +71,7 @@ class LoopView(discord.ui.View):
 
 # --- 명령어 정의 ---
 
-@playback_cmd.command(name="시작", description="YouTube에서 곡을 검색하거나 URL로 재생합니다.")
+@playback_cmd.command(name="시작", description="YouTube에서 곡을 검색하거나 URL로 재생해요.")
 @discord.app_commands.describe(query="곡 이름 또는 YouTube URL")
 async def play(interaction: discord.Interaction, query: str):
     if not interaction.user.voice:
@@ -120,7 +120,7 @@ async def play(interaction: discord.Interaction, query: str):
         await interaction.edit_original_response(embed=embed)
 
 
-@playback_cmd.command(name="일시정지", description="재생을 일시정지합니다.")
+@playback_cmd.command(name="일시정지", description="재생을 일시정지해요.")
 async def pause(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -136,7 +136,7 @@ async def pause(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@playback_cmd.command(name="계속", description="일시정지된 재생을 계속합니다.")
+@playback_cmd.command(name="계속", description="일시정지된 재생을 계속해요.")
 async def resume(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -151,7 +151,7 @@ async def resume(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@playback_cmd.command(name="정지", description="재생을 멈추고 대기열을 초기화합니다.")
+@playback_cmd.command(name="정지", description="재생을 멈추고 대기열을 초기화해요.")
 async def stop(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -168,7 +168,7 @@ async def stop(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@playback_cmd.command(name="다음", description="다음 곡으로 넘어갑니다.")
+@playback_cmd.command(name="다음", description="다음 곡으로 넘어갈게요.")
 async def skip(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -184,7 +184,7 @@ async def skip(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@playback_cmd.command(name="이전", description="이전 곡으로 돌아갑니다.")
+@playback_cmd.command(name="이전", description="이전 곡으로 돌아갈게요.")
 async def prev(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -209,7 +209,7 @@ async def prev(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@playback_cmd.command(name="지금", description="현재 재생 중인 곡 정보를 표시합니다.")
+@playback_cmd.command(name="지금", description="현재 재생 중인 곡 정보를 표시해요.")
 async def nowplaying(interaction: discord.Interaction):
     state = manager.get(interaction.guild_id)
     if not state.current:
@@ -221,7 +221,7 @@ async def nowplaying(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@playback_cmd.command(name="반복", description="반복 모드를 설정합니다.")
+@playback_cmd.command(name="반복", description="반복 모드를 설정할게요.")
 async def loop(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -236,7 +236,7 @@ async def loop(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=LoopView(state), ephemeral=True)
 
 
-@playback_cmd.command(name="자동재생", description="작곡가의 다른 음악을 자동재생합니다.")
+@playback_cmd.command(name="자동재생", description="작곡가의 다른 음악을 자동재생할게요.")
 async def autoplay(interaction: discord.Interaction):
     await interaction.response.defer()
     state = manager.get(interaction.guild_id)
@@ -285,13 +285,13 @@ async def autoplay(interaction: discord.Interaction):
 
         embed = discord.Embed(
             title="✅ 자동재생 활성화",
-            description=f"**{state.current.uploader}**의 다른 음악을 자동으로 재생할게요.\n곡 5개를 대기열에 추가했습니다.",
+            description=f"**{state.current.uploader}**의 다른 음악을 자동으로 재생할게요.\n곡 5개를 대기열에 추가했어요.",
             color=discord.Color.green(),
         )
     else:
         embed = discord.Embed(
             title="❌ 자동재생 비활성화",
-            description="더 이상 자동재생하지 않습니다.",
+            description="더 이상 자동재생하지 않아요.",
             color=discord.Color.red(),
         )
 
@@ -299,7 +299,7 @@ async def autoplay(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed)
 
 
-@playback_cmd.command(name="나가", description="봇을 음성 채널에서 내보냅니다.")
+@playback_cmd.command(name="나가", description="봇을 음성 채널에서 내보내요.")
 async def leave(interaction: discord.Interaction):
     if not await _check_voice_connection(interaction): return
     state = manager.get(interaction.guild_id)
@@ -313,3 +313,5 @@ async def leave(interaction: discord.Interaction):
 
     embed = _footer(discord.Embed(title="👋 퇴장", description="채널에서 나왔어요.", color=discord.Color.blurple()), interaction)
     await interaction.response.send_message(embed=embed)
+
+# 쿼크만세
