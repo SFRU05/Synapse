@@ -212,7 +212,7 @@ class GiveawayCancelView(discord.ui.View):
                     await msg.edit(embed=embed, view=msg_view)
         except Exception as e:
             print("메시지 수정 오류:", e)
-        await interaction.response.send_message("참여가 취소되었습니다.", ephemeral=True)
+        await interaction.response.send_message("참여가 취소되었어요.", ephemeral=True)
 
 class GiveawayJoinView(discord.ui.View):
     def __init__(self, giveaway_id):
@@ -223,13 +223,13 @@ class GiveawayJoinView(discord.ui.View):
     async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         giveaway = get_giveaway_by_id(self.giveaway_id)
         if not giveaway or giveaway[8]:
-            await interaction.response.send_message("이 이벤트는 이미 종료되었습니다.", ephemeral=True)
+            await interaction.response.send_message("이 이벤트는 이미 종료되었어요.", ephemeral=True)
             return
         p = get_participants(self.giveaway_id)
         if interaction.user.id in p:
             view = GiveawayCancelView(self.giveaway_id)
             await interaction.response.send_message(
-                "이미 참여하셨습니다.\n참여를 취소하려면 아래 버튼을 눌러주세요.",
+                "이미 참여하셨어요!\n참여를 취소하려면 아래 버튼을 눌러주세요.",
                 ephemeral=True,
                 view=view
             )
@@ -270,19 +270,19 @@ class GiveawayRerollView(discord.ui.View):
     async def reroll_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         giveaway = get_giveaway_by_id(self.giveaway_id)
         if not giveaway or not giveaway[8]:
-            await interaction.response.send_message("이벤트가 종료되지 않았거나 찾을 수 없습니다.", ephemeral=True)
+            await interaction.response.send_message("이벤트가 종료되지 않았거나 찾을 수 없어요.", ephemeral=True)
             return
 
         host_id = giveaway[4]
         if interaction.user.id != host_id:
-            await interaction.response.send_message("재추첨은 개최자만 누를 수 있습니다.", ephemeral=True)
+            await interaction.response.send_message("재추첨은 개최자만 누를 수 있어요.", ephemeral=True)
             return
 
         all_participants = set(get_participants(self.giveaway_id))
         prev_winners = set(get_winners(self.giveaway_id))
         candidates = list(all_participants - prev_winners)
         if not candidates:
-            await interaction.response.send_message("재추첨 대상이 없습니다. (모든 참가자가 이미 당첨됨)", ephemeral=True)
+            await interaction.response.send_message("재추첨 대상이 없어요. (모든 참가자가 이미 당첨됨)", ephemeral=True)
             return
 
         winners_n = min(giveaway[3], len(candidates))
@@ -312,7 +312,7 @@ async def delayed_announce(bot, giveaway_id, wait_sec):
     p = get_participants(giveaway_id)
 
     if len(p) < 1:
-        winner_mentions = "참여자가 없어 추첨이 없습니다."
+        winner_mentions = "참여자가 없어 추첨이 없어요."
         winner_ids = []
     else:
         winners_n = min(winners, len(p))
@@ -350,7 +350,7 @@ async def delayed_announce(bot, giveaway_id, wait_sec):
 
 class GiveawayModal(discord.ui.Modal, title="Giveaway 등록"):
     name = discord.ui.TextInput(
-        label="이름", placeholder="이벤트 이름을 입력하세요", required=True, max_length=50)
+        label="이름", placeholder="이벤트 이름을 입력하세요.", required=True, max_length=50)
     time = discord.ui.TextInput(
         label="시간(예: 1d2h3m, 10m, 3h, 5)", placeholder="예: 1d2h3m, 10m 등", required=True, max_length=20)
     winners = discord.ui.TextInput(
@@ -394,17 +394,17 @@ class GiveawayModal(discord.ui.Modal, title="Giveaway 등록"):
         set_giveaway_message(give_id, msg.id, msg.channel.id)
         bot = interaction.client
         asyncio.create_task(delayed_announce(bot, give_id, minute*60))
-        await interaction.response.send_message("이벤트가 생성되었습니다!", ephemeral=True)
+        await interaction.response.send_message("이벤트가 생성되었어요!", ephemeral=True)
 
-@discord.app_commands.command(name="이벤트", description="Giveaway 정보를 등록합니다.")
+@discord.app_commands.command(name="이벤트", description="Giveaway 정보를 등록해요.")
 async def giveway_slash(interaction: discord.Interaction):
     await interaction.response.send_modal(GiveawayModal())
 
-@discord.app_commands.command(name="이벤트목록", description="모든 Giveaway를 확인합니다.")
+@discord.app_commands.command(name="이벤트목록", description="모든 Giveaway를 확인해요.")
 async def giveway_list_slash(interaction: discord.Interaction):
     data = get_all_giveaways()
     if not data:
-        await interaction.response.send_message("등록된 giveaway가 없습니다.", ephemeral=True)
+        await interaction.response.send_message("등록된 giveaway가 없어요.", ephemeral=True)
         return
 
     desc = ""
