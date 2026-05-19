@@ -2,11 +2,11 @@ import discord
 from discord import app_commands
 import datetime
 
-@app_commands.command(name="서버정보", description="이 서버의 정보를 보여줍니다.")
+@app_commands.command(name="서버정보", description="이 서버의 정보를 보여줘요.")
 async def serverinfo_slash(interaction: discord.Interaction):
     guild = interaction.guild
     if not guild:
-        await interaction.response.send_message("서버 정보는 서버에서만 사용할 수 있습니다.", ephemeral=True)
+        await interaction.response.send_message("서버 정보는 서버에서만 사용할 수 있어요", ephemeral=True)
         return
 
     embed = discord.Embed(

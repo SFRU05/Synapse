@@ -25,15 +25,15 @@ class GuildActionSelect(discord.ui.Select):
         if not options:
             options.append(discord.SelectOption(label="참여 중인 서버 없음", value="none"))
 
-        super().__init__(placeholder="⚙️ 관리할 서버를 선택하세요...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="⚙️ 관리할 서버를 선택해주세요...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id not in DEVELOPER_IDS:
-            await interaction.response.send_message("❌ 개발자만 이 메뉴를 조작할 수 있습니다.", ephemeral=True)
+            await interaction.response.send_message("❌ 개발자만 이 메뉴를 조작할 수 있어요.", ephemeral=True)
             return
         guild_id_str = self.values[0]
         if guild_id_str == "none":
-            await interaction.response.send_message("❌ 선택할 수 있는 서버가 없습니다.", ephemeral=True)
+            await interaction.response.send_message("❌ 선택할 수 있는 서버가 없어요.", ephemeral=True)
             return
 
         await interaction.response.send_message(
@@ -89,11 +89,11 @@ class GuildActionButtons(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         guild = self.bot.get_guild(self.guild_id)
         if not guild:
-            await interaction.followup.send("❌ 봇이 서버를 찾을 수 없습니다.", ephemeral=True)
+            await interaction.followup.send("❌ 서버를 찾을 수 없어요.", ephemeral=True)
             return
         try:
             await guild.leave()
-            await interaction.followup.send(f"✅ 서버에서 나갔습니다.", ephemeral=True)
+            await interaction.followup.send(f"✅ 서버에서 나갔어요.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ 오류 발생: `{str(e)}`", ephemeral=True)
 
@@ -103,10 +103,6 @@ class GuildSelectView(discord.ui.View):
         super().__init__(timeout=60)
         self.add_item(GuildActionSelect(bot))
 
-
-# ==============================================================================
-# 메인 파일에서 로드할 Cog 클래스 정의
-# ==============================================================================
 class DeveloperCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -129,7 +125,7 @@ class DeveloperCommands(commands.Cog):
     @developer_panel.error
     async def developer_panel_error(self, ctx, error):
         if isinstance(error, commands.CheckFailure):
-            await ctx.send("❌ 개발자만 사용 가능한 명령어입니다.")
+            await ctx.send("❌ 개발자만 사용 가능한 명령어에요.")
 
 
 # 💡 main.py에서 이 함수를 호출하여 명령어를 추가하게 됩니다.

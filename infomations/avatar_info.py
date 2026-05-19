@@ -2,15 +2,15 @@ import discord
 from discord import app_commands
 import datetime
 
-@app_commands.command(name="아바타", description="사용자 아바타를 보여줍니다.")
-@app_commands.describe(member="조회할 멤버를 선택하세요. (선택하지 않으면 자신의 아바타가 표시됩니다.)")
+@app_commands.command(name="아바타", description="사용자 아바타를 보여줘요.")
+@app_commands.describe(member="조회할 멤버를 선택해주세요. (선택하지 않으면 자신의 아바타가 표시돼요.)")
 async def avatar_slash(
     interaction: discord.Interaction,
     member: discord.Member = None
 ):
     target = member or interaction.user
     embed = discord.Embed(
-        title=f"{target.display_name}의 아바타",
+        title=f"{target.display_name}님의 아바타",
         color=discord.Color.blue(),
         timestamp=datetime.datetime.now()
     )

@@ -282,7 +282,7 @@ class GiveawayRerollView(discord.ui.View):
         prev_winners = set(get_winners(self.giveaway_id))
         candidates = list(all_participants - prev_winners)
         if not candidates:
-            await interaction.response.send_message("재추첨 대상이 없어요. (모든 참가자가 이미 당첨됨)", ephemeral=True)
+            await interaction.response.send_message("모든 당첨자가 추첨되어 재추첨 대상이 없어요.", ephemeral=True)
             return
 
         winners_n = min(giveaway[3], len(candidates))
@@ -404,7 +404,7 @@ async def giveway_slash(interaction: discord.Interaction):
 async def giveway_list_slash(interaction: discord.Interaction):
     data = get_all_giveaways()
     if not data:
-        await interaction.response.send_message("등록된 giveaway가 없어요.", ephemeral=True)
+        await interaction.response.send_message("등록된 Giveaway가 없어요.", ephemeral=True)
         return
 
     desc = ""

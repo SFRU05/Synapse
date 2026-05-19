@@ -34,9 +34,9 @@ bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_comma
 
 def get_status_list():
     return [
-        "서버 관리 중",
+        "서버 관리 중ㅣ{m}명과 함께",
         "서버 {n}개에서 노는 중",
-        "/help로 명령어 확인하기"]
+        "/도움 으로 명령어 확인하기"]
 
 status = cycle(get_status_list())
 
@@ -81,11 +81,13 @@ async def on_ready():
     await bot.load_extension("develop_function.developer_commands")
     change_status.start()
 
-@tasks.loop(seconds=10) # n초마다 다음 메시지 출력
+@tasks.loop(seconds=6)
 async def change_status():
     template = next(status)
-    text = template.format(n=len(bot.guilds))
-    await bot.change_presence(activity=discord.Game(text))
+    server_count = len(bot.guilds)
+    user_count = len(set(bot.users))
+    text = template.format(n=server_count, m=user_count)
+    await bot.change_presence(activity=discord.Game(name=text))
 
 async def setup_hook():
     await bot.load_extension('random_draw')

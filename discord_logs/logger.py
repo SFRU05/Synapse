@@ -17,7 +17,7 @@ async def log_message_delete(message: discord.Message):
     log_channel = message.guild.get_channel(log_channel_id)
     if not log_channel: return
     embed = discord.Embed(
-        title="🗑️ 메시지 삭제됨",
+        title="🗑️ 메시지가 삭제되었어요",
         description=message.content or "(내용 없음)",
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
@@ -49,7 +49,7 @@ async def log_message_edit(before: discord.Message, after: discord.Message):
     log_channel = before.guild.get_channel(log_channel_id)
     if not log_channel: return
     embed = discord.Embed(
-        title="✏️ 메시지 수정됨",
+        title="✏️ 메시지가 수정되었어요",
         color=discord.Color.teal(),
         timestamp=datetime.datetime.now()
     )
@@ -78,7 +78,7 @@ async def log_member_join(member: discord.Member):
     if not log_channel: return
     embed = discord.Embed(
         title="➡️ 멤버 입장",
-        description=f"{member.mention}님이 서버에 들어왔습니다.",
+        description=f"{member.mention}님이 서버에 들어오셨어요.",
         color=discord.Color.green(),
         timestamp=datetime.datetime.now()
     )
@@ -100,7 +100,7 @@ async def log_member_remove(member: discord.Member):
     if not log_channel: return
     embed = discord.Embed(
         title="⬅️ 멤버 퇴장",
-        description=f"{member.mention}님이 서버에서 나갔습니다.",
+        description=f"{member.mention}님이 서버에서 나가셨어요.",
         color=discord.Color.orange(),
         timestamp=datetime.datetime.now()
     )
@@ -129,8 +129,8 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
 
     for role in added_roles:
         embed = discord.Embed(
-            title="✅ 역할 추가",
-            description=f"{after.mention}님에게 역할 {role.mention} 추가됨",
+            title="✅ 역할 추가됨",
+            description=f"{after.mention}님에게 {role.mention} 역할이 추가되었어요.",
             color=discord.Color.blue(),
             timestamp=now
         )
@@ -138,8 +138,8 @@ async def log_member_role_update(before: discord.Member, after: discord.Member):
         await log_channel.send(embed=embed)
     for role in removed_roles:
         embed = discord.Embed(
-            title="❌ 역할 제거",
-            description=f"{after.mention}님에게서 역할 {role.mention} 제거됨",
+            title="❌ 역할 제거됨",
+            description=f"{after.mention}님에게서 {role.mention} 역할이 제거되었어요.",
             color=discord.Color.purple(),
             timestamp=now
         )
@@ -176,8 +176,8 @@ async def log_role_update(before: discord.Role, after: discord.Role):
     if not changes:
         return
     embed = discord.Embed(
-        title="⚙️ 역할 정보 변경",
-        description=f"{after.mention} 역할 정보가 변경됨",
+        title="⚙️ 역할 정보 변경됨",
+        description=f"{after.mention} 역할의 정보가 변경되었어요.",
         color=discord.Color.orange(),
         timestamp=datetime.datetime.now()
     )
@@ -200,8 +200,8 @@ async def log_channel_create(channel: discord.abc.GuildChannel):
     log_channel = channel.guild.get_channel(log_channel_id)
     if not log_channel: return
     embed = discord.Embed(
-        title="➕ 채널 생성",
-        description=f"{channel.mention} 채널 생성",
+        title="➕ 채널 생성됨",
+        description=f"{channel.mention} 채널이 생성되었어요.",
         color=discord.Color.green(),
         timestamp=datetime.datetime.now()
     )
@@ -222,8 +222,8 @@ async def log_channel_delete(channel: discord.abc.GuildChannel):
     log_channel = channel.guild.get_channel(log_channel_id)
     if not log_channel: return
     embed = discord.Embed(
-        title="🗑️ 채널 삭제",
-        description=f"`{channel.name}`({channel.id}) 채널 삭제",
+        title="🗑️ 채널 삭제됨",
+        description=f"`{channel.name}`({channel.id}) 채널이 삭제되었어요.",
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )
@@ -254,8 +254,8 @@ async def log_channel_update(before: discord.abc.GuildChannel, after: discord.ab
     if not changes:
         return
     embed = discord.Embed(
-        title="🔧 채널 정보 변경",
-        description=f"{after.mention} 채널 정보가 변경됨",
+        title="🔧 채널 정보 변경됨",
+        description=f"{after.mention} 채널의 정보가 변경되었어요.",
         color=discord.Color.orange(),
         timestamp=datetime.datetime.now()
     )
@@ -280,8 +280,8 @@ async def log_role_create(role: discord.Role):
     if not log_channel: return
 
     embed = discord.Embed(
-        title="➕ 역할 생성",
-        description=f"{role.mention} 역할이 생성되었습니다.",
+        title="➕ 역할 생성됨",
+        description=f"{role.mention} 역할이 생성되었어요.",
         color=discord.Color.green(),
         timestamp=datetime.datetime.now()
     )
@@ -306,8 +306,8 @@ async def log_role_delete(role: discord.Role):
     if not log_channel: return
 
     embed = discord.Embed(
-        title="🗑️ 역할 삭제",
-        description=f"`{role.name}`({role.id}) 역할이 삭제되었습니다.",
+        title="🗑️ 역할 삭제됨",
+        description=f"`{role.name}`({role.id}) 역할이 삭제되었어요.",
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )

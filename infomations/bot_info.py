@@ -22,7 +22,7 @@ class InfoButtonView(discord.ui.View):
             emoji="🌐"
         ))
 
-@app_commands.command(name="봇정보", description="이 봇의 정보를 보여줍니다.")
+@app_commands.command(name="봇정보", description="이 봇의 정보를 보여줘요.")
 async def info_slash(
     interaction: discord.Interaction
 ):

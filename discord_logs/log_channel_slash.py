@@ -36,7 +36,7 @@ class LogSettingsView(discord.ui.View):
         ]
 
         select = discord.ui.Select(
-            placeholder="로그 종류를 선택하세요",
+            placeholder="로그 종류를 선택해주세요.",
             min_values=0,
             max_values=len(LOG_TYPES),
             options=options
@@ -67,13 +67,13 @@ class LogSettingsView(discord.ui.View):
             selected = [LOG_TYPES[k] for k in select]
             embed = discord.Embed(
                 title="✅ 로그 설정 저장됨",
-                description="다음 로그들이 활성화되었습니다:\n" + "\n".join(selected),
+                description="다음 로그들이 활성화되었어요:\n" + "\n".join(selected),
                 color=discord.Color.green(),
             )
         else:
             embed = discord.Embed(
                 title="✅ 로그 설정 저장됨",
-                description="모든 로그가 비활성화되었습니다.",
+                description="모든 로그가 비활성화되었어요.",
                 color=discord.Color.green(),
             )
 
@@ -84,7 +84,7 @@ class LogSettingsView(discord.ui.View):
             await log_settings_change(interaction.guild, interaction.user, changed)
 
 
-@app_commands.command(name="로그채널", description="서버 로그용 채널을 지정합니다 (관리자만 가능)")
+@app_commands.command(name="로그채널", description="서버 로그용 채널을 지정해요.")
 @app_commands.describe(channel="로그를 보낼 텍스트 채널")
 async def setlog_slash(
         interaction: discord.Interaction,
@@ -93,7 +93,7 @@ async def setlog_slash(
     if not interaction.user.guild_permissions.administrator:
         embed = discord.Embed(
             title="❌ 권한 부족",
-            description="관리자 권한이 필요합니다.",
+            description="관리자 권한이 필요해요.",
             color=discord.Color.red(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -102,18 +102,18 @@ async def setlog_slash(
     set_log_channel(interaction.guild.id, channel.id)
     embed = discord.Embed(
         title="✅ 로그 채널 설정 완료",
-        description=f"{channel.mention} 채널이 로그 채널로 지정되었습니다.",
+        description=f"{channel.mention} 채널이 로그 채널로 지정되었어요.",
         color=discord.Color.green()
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-@app_commands.command(name="로그설정", description="로그 종류별 설정을 관리합니다 (관리자만 가능)")
+@app_commands.command(name="로그설정", description="로그 종류별 설정을 관리해요.")
 async def logsettings_slash(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         embed = discord.Embed(
             title="❌ 권한 부족",
-            description="관리자 권한이 필요합니다.",
+            description="관리자 권한이 필요해요.",
             color=discord.Color.red(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -124,7 +124,7 @@ async def logsettings_slash(interaction: discord.Interaction):
 
     embed = discord.Embed(
         title="📋 로그 설정 관리",
-        description="활성화할 로그 종류를 선택하세요.\n아래의 드롭다운에서 로그 종류를 선택하세요.",
+        description="활성화할 로그 종류를 선택해주세요.\n아래의 드롭다운에서 로그 종류를 선택할 수 있어요.",
         color=discord.Color.blurple(),
     )
 
@@ -136,7 +136,7 @@ async def logsettings_slash(interaction: discord.Interaction):
         else:
             embed.add_field(name="로그 채널", value="설정되지 않음 (채널이 삭제됨)", inline=False)
     else:
-        embed.add_field(name="로그 채널", value="설정되지 않음 - `/로그채널` 명령어로 설정하세요", inline=False)
+        embed.add_field(name="로그 채널", value="비활성화 - `/로그채널` 명령어로 설정해주세요.", inline=False)
 
     # 현재 활성화된 로그 표시
     enabled = [LOG_TYPES[k] for k, v in current_settings.items() if v]

@@ -32,7 +32,7 @@ async def _check_voice_connection(interaction: discord.Interaction) -> bool:
     return True
 
 
-@queue_cmd.command(name="확인", description="현재 대기열을 표시합니다.")
+@queue_cmd.command(name="확인", description="현재 대기열을 표시해요.")
 async def show_queue(interaction: discord.Interaction):
     state = manager.get(interaction.guild_id)
 
@@ -74,7 +74,7 @@ async def show_queue(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@queue_cmd.command(name="삭제", description="대기열에서 특정 곡을 삭제합니다.")
+@queue_cmd.command(name="삭제", description="대기열에서 특정 곡을 삭제해요.")
 @discord.app_commands.describe(index="삭제할 곡 번호")
 async def remove(interaction: discord.Interaction, index: int):
     # 통화방 체크
@@ -105,7 +105,7 @@ async def remove(interaction: discord.Interaction, index: int):
     await interaction.response.send_message(embed=embed)
 
 
-@queue_cmd.command(name="초기화", description="대기열을 전부 비웁니다.")
+@queue_cmd.command(name="초기화", description="대기열을 전부 비워요.")
 async def clear(interaction: discord.Interaction):
     # 통화방 체크
     if not await _check_voice_connection(interaction): return
@@ -123,7 +123,7 @@ async def clear(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@queue_cmd.command(name="셔플", description="대기열을 무작위로 섞습니다.")
+@queue_cmd.command(name="셔플", description="대기열을 무작위로 섞어요.")
 async def shuffle(interaction: discord.Interaction):
     # 통화방 체크
     if not await _check_voice_connection(interaction): return
