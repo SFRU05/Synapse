@@ -20,6 +20,8 @@ from music.cogs.playback import playback_cmd
 from music.cogs.queue import queue_cmd
 from music.cogs.volume import volume_cmd
 
+from moderation.warn import warning_cmd, ensure_warning_db
+
 from discord_logs.log_channel_slash import setlog_slash, logsettings_slash
 from discord_logs.log_settings_db import ensure_db
 from discord_logs.logger import (
@@ -39,6 +41,7 @@ def get_status_list():
 status = cycle(get_status_list())
 
 ensure_db()
+ensure_warning_db()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -67,6 +70,7 @@ bot.tree.add_command(giveways.giveway_list_slash) # Giveaway 리스트 명령어
 bot.tree.add_command(playback_cmd)  # 재생 관련 명령어
 bot.tree.add_command(queue_cmd)     # 대기열 관련 명령어
 bot.tree.add_command(volume_cmd)    # 볼륨 관련 명령어
+bot.tree.add_command(warning_cmd)   # 경고 관련 명령어
 
 # 봇이 준비되었을 떄 나오는 상태메시지
 @bot.event
