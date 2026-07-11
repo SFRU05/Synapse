@@ -184,7 +184,7 @@ async def on_message(message: discord.Message):
             description=(
                 f"다양한 기능들을 수행하는 디스코드 봇, Syna"
                 f"pse입니다.\n\n"
-                f"`/help`를 입력하여 명령어를 알아보세요!"
+                f"`/도움`를 입력하여 명령어를 알아보세요!"
             ),
             color=discord.Color.blurple(),
             timestamp=datetime.datetime.now(datetime.UTC)
