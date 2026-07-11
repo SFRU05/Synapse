@@ -80,6 +80,7 @@ async def on_ready():
     await bot.tree.sync() # 슬래시 명령어 동기화
     await giveways.scheduled_giveaway_announce(bot)
     await bot.load_extension("develop_function.developer_commands")
+    await bot.load_extension("develop_function.request")
     change_status.start()
 
 @tasks.loop(seconds=6)
