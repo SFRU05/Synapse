@@ -1,13 +1,3 @@
-"""
-Sync Command Cog (prefix 버전)
-----------------
-봇 소유자가 필요할 때만 수동으로 슬래시 커맨드를 동기화하는 prefix 명령어.
-- -동기화        : 모든 서버(글로벌)에 동기화, 반영까지 최대 1시간 걸릴 수 있음
-- -동기화즉시    : 명령어를 실행한 서버에만 즉시 동기화 (개발/테스트용)
-
-on_ready에서 매번 자동으로 sync()를 부르면 재연결마다 반복 호출돼서
-레이트리밋 위험이 있으므로, 이렇게 명령어로 필요할 때만 실행하는 게 안전하다.
-"""
 import discord
 from discord.ext import commands
 
@@ -19,7 +9,7 @@ class SyncCommands(commands.Cog):
     @commands.command(name="동기화")
     @commands.is_owner()
     async def sync_global(self, ctx: commands.Context):
-        msg = await ctx.send("🔄 글로벌 동기화 중...\n시간이 다소 소요될 수 있어요.")
+        msg = await ctx.send("🔄 글로벌 동기화 중...")
         synced = await self.bot.tree.sync()
 
         names = ", ".join(f"`/{cmd.name}`" for cmd in synced) or "(없음)"
@@ -56,8 +46,54 @@ class SyncCommands(commands.Cog):
         embed.add_field(name="명령어 목록", value=names, inline=False)
         await msg.edit(content=None, embed=embed)
 
+    @commands.command(name="전체동기화")
+    @commands.is_owner()
+    async def sync_all_guilds(self, ctx: commands.Context):
+        """봇이 들어가있는 모든 서버 ID를 자동으로 불러와서 하나씩 즉시 동기화"""
+        msg = await ctx.send(f"🔄 총 {len(self.bot.guilds)}개 서버에 순차적으로 동기화 중...")
+
+        success = 0
+        failed = []
+        for guild in self.bot.guilds:
+            try:
+                self.bot.tree.copy_global_to(guild=guild)
+                await self.bot.tree.sync(guild=guild)
+                success += 1
+            except discord.HTTPException as e:
+                failed.append(f"{guild.name} ({guild.id}): {e}")
+
+        embed = discord.Embed(
+            title="✅ 전체 서버 동기화 완료",
+            description=f"성공: **{success}**개 / 전체: **{len(self.bot.guilds)}**개",
+            color=discord.Color.green() if not failed else discord.Color.orange(),
+        )
+        if failed:
+            fail_text = "\n".join(failed[:10])
+            if len(failed) > 10:
+                fail_text += f"\n... 외 {len(failed) - 10}개"
+            embed.add_field(name="⚠️ 실패한 서버", value=fail_text, inline=False)
+
+        await msg.edit(content=None, embed=embed)
+
+    @commands.command(name="길드명령어초기화")
+    @commands.is_owner()
+    async def clear_all_guild_commands(self, ctx: commands.Context):
+        """모든 서버의 '길드 전용' 명령어 등록을 지워서 중복 표시 문제를 정리한다.
+        (글로벌 명령어는 그대로 남아있고, 각 서버는 글로벌 명령어만 보게 됨)"""
+        msg = await ctx.send(f"🧹 총 {len(self.bot.guilds)}개 서버의 길드 전용 명령어 정리 중...")
+
+        cleared = 0
+        for guild in self.bot.guilds:
+            self.bot.tree.clear_commands(guild=guild)
+            await self.bot.tree.sync(guild=guild)
+            cleared += 1
+
+        await msg.edit(content=f"✅ {cleared}개 서버의 길드 전용 명령어를 정리했어요. (글로벌 명령어만 남음)")
+
     @sync_global.error
     @sync_here.error
+    @sync_all_guilds.error
+    @clear_all_guild_commands.error
     async def sync_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.NotOwner):
             await ctx.send("봇 소유자만 사용할 수 있어요.")
