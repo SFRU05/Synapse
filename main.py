@@ -37,7 +37,8 @@ def get_status_list():
     return [
         "서버 관리 중ㅣ{m}명과 함께",
         "서버 {n}개에서 노는 중",
-        "/도움 으로 명령어 확인하기"]
+        "/도움 으로 명령어 확인하기",
+        "버그 제보나 건의는 저의 DM으로!"]
 
 status = cycle(get_status_list())
 
@@ -81,6 +82,8 @@ async def on_ready():
     await giveways.scheduled_giveaway_announce(bot)
     await bot.load_extension("develop_function.developer_commands")
     await bot.load_extension("develop_function.request")
+    await bot.load_extension("jumbo_emoji.jumbo_emoji")
+    await bot.load_extension("jumbo_emoji.settings")
     change_status.start()
 
 @tasks.loop(seconds=6)
@@ -190,7 +193,7 @@ async def on_message(message: discord.Message):
             color=discord.Color.blurple(),
             timestamp=datetime.datetime.now(datetime.UTC)
         )
-        embed.set_footer(text="문의, 피드백: 서포트 서버로 오세요!")
+        embed.set_footer(text="문의, 피드백: 서포트 서버 또는 봇 DM으로!")
         if bot.user.display_avatar:
             embed.set_thumbnail(url=bot.user.display_avatar.url)
 
