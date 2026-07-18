@@ -84,6 +84,7 @@ async def on_ready():
     await bot.load_extension("develop_function.request")
     await bot.load_extension("jumbo_emoji.jumbo_emoji")
     await bot.load_extension("jumbo_emoji.settings")
+    await bot.load_extension("develop_function.command_sync")
     change_status.start()
 
 @tasks.loop(seconds=6)
