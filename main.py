@@ -83,7 +83,6 @@ async def on_ready():
     await bot.load_extension("jumbo_emoji.jumbo_emoji")
     await bot.load_extension("jumbo_emoji.settings")
     await bot.load_extension("develop_function.command_sync")
-    await bot.load_extension("tts_voice.cogs.tts")
     change_status.start()
 
     await bot.tree.sync()  # 슬래시 명령어 동기화
