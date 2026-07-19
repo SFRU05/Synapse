@@ -500,7 +500,19 @@ class DeveloperCommands(commands.Cog):
         else:
             raise error
 
+class CommandList(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
 
-# 💡 main.py에서 이 함수를 호출하여 명령어를 추가하게 됩니다.
+    @commands.command(name="커맨드목록")
+    async def list_commands(self, ctx: commands.Context):
+        if ctx.author.id not in DEVELOPER_IDS:
+            await ctx.send("이 명령어는 개발자만 사용할 수 있어요.")
+            return
+        commands_list = await self.bot.tree.fetch_commands()
+        msg = "\n".join([f"`</{cmd.name}:{cmd.id}>`" for cmd in commands_list])
+        await ctx.send(msg)
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(DeveloperCommands(bot))
+    await bot.add_cog(CommandList(bot))

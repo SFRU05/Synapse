@@ -35,10 +35,9 @@ bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_comma
 
 def get_status_list():
     return [
-        "서버 관리 중ㅣ{m}명과 함께",
+        "서버 쳐다보기ㅣ{m}명과 함께",
         "서버 {n}개에서 노는 중",
-        "/도움 으로 명령어 확인하기",
-        "버그 제보나 건의는 저의 DM으로!"]
+        "문의는 DM으로!"]
 
 status = cycle(get_status_list())
 
@@ -78,14 +77,16 @@ bot.tree.add_command(warning_cmd)   # 경고 관련 명령어
 @bot.event
 async def on_ready():
     print(f"로그인됨: {bot.user.name} ({bot.user.id})")
-    await bot.tree.sync() # 슬래시 명령어 동기화
     await giveways.scheduled_giveaway_announce(bot)
     await bot.load_extension("develop_function.developer_commands")
     await bot.load_extension("develop_function.request")
     await bot.load_extension("jumbo_emoji.jumbo_emoji")
     await bot.load_extension("jumbo_emoji.settings")
     await bot.load_extension("develop_function.command_sync")
+    await bot.load_extension("tts_voice.cogs.tts")
     change_status.start()
+
+    await bot.tree.sync()  # 슬래시 명령어 동기화
 
 @tasks.loop(seconds=6)
 async def change_status():
