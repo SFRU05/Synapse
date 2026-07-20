@@ -1,12 +1,105 @@
+import logging
+import traceback
 import discord
 from discord import app_commands
+
+logger = logging.getLogger("moderation")
+
+class ConfirmView(discord.ui.View):
+
+    def __init__(self, moderator: discord.Member, *, timeout: float = 15):
+        super().__init__(timeout=timeout)
+        self.moderator = moderator
+        self.result: str | None = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.moderator.id:
+            await interaction.response.send_message(
+                "이 버튼은 명령어를 실행한 사람만 누를 수 있어요.", ephemeral=True
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="✅ 예", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.result = "confirm"
+        self.stop()
+        await interaction.response.defer(ephemeral=False)
+
+    @discord.ui.button(label="❌ 아니요", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.result = "cancel"
+        self.stop()
+        await interaction.response.defer(ephemeral=True)
+
+def build_embed(
+    title: str,
+    description: str,
+    color: discord.Color,
+    *,
+    reason: str | None = None,
+    moderator: discord.Member | None = None,
+) -> discord.Embed:
+    embed = discord.Embed(title=title, description=description, color=color)
+    if moderator is not None:
+        embed.add_field(name="중재자", value=moderator.mention, inline=True if reason else False)
+    if reason is not None:
+        embed.add_field(name="사유", value=reason, inline=False)
+    return embed
+
+async def run_confirmation_flow(
+    interaction: discord.Interaction,
+    *,
+    confirm_title: str,
+    confirm_description: str,
+    confirm_color: discord.Color,
+    reason: str | None,
+    cancel_title: str,
+    cancel_description: str,
+    timeout_title: str,
+    timeout_description: str,
+):
+    embed = build_embed(confirm_title, confirm_description, confirm_color, reason=reason)
+    embed.set_footer(text="15초 내 예 또는 아니요를 눌러주세요.")
+
+    view = ConfirmView(interaction.user)
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    await view.wait()
+
+    if view.result == "cancel":
+        await interaction.edit_original_response(
+            embed=build_embed(cancel_title, cancel_description, discord.Color.light_grey()),
+            view=None,
+        )
+    elif view.result is None:
+        await interaction.edit_original_response(
+            embed=build_embed(timeout_title, timeout_description, discord.Color.light_grey()),
+            view=None,
+        )
+
+    return view.result
+
+def check_kick_possible(guild: discord.Guild, member: discord.Member) -> str | None:
+    bot_member = guild.me
+
+    if member.id == guild.owner_id:
+        return "❌ 서버 소유자는 추방할 수 없어요."
+    if member.id == bot_member.id:
+        return "❌ 저를 추방하시면 안 돼요!!"
+    if not bot_member.guild_permissions.kick_members:
+        return "❌ 봇 역할에 추방 권한이 없어요. 서버 설정 → 역할에서 권한을 확인해주세요."
+    if member.top_role >= bot_member.top_role:
+        return (
+            f"❌ **역할 순서 권한 오류가 발생했어요.** {member.mention} 님의 최상위 역할이 "
+            f"제 최상위 역할({bot_member.top_role.mention})보다 높거나 같아서 처리할 수 없어요."
+        )
+    return None
 
 async def apply_kick(
     interaction: discord.Interaction,
     member: discord.Member,
     reason: str | None,
 ) -> tuple[bool, str]:
-    """실제 추방 적용. (성공 여부, 실패 시 사유 메시지) 반환."""
     try:
         await member.kick(reason=reason)
         return True, ""
@@ -23,26 +116,7 @@ async def apply_kick(
         logger.error(traceback.format_exc())
         return False, "❌ 알 수 없는 오류가 발생했어요."
 
-
-def check_kick_possible(guild: discord.Guild, member: discord.Member) -> str | None:
-    """추방용 사전 체크 (역할 계층/권한 문제를 API 호출 전에 확인)."""
-    bot_member = guild.me
-
-    if member.id == guild.owner_id:
-        return "❌ 서버 소유자는 추방할 수 없어요."
-    if member.id == bot_member.id:
-        return "❌ 저를 추방하시면 안 돼요!!."
-    if not bot_member.guild_permissions.kick_members:
-        return "❌ 봇 역할에 추방 권한이 없어요. 서버 설정 → 역할에서 권한을 확인해주세요."
-    if member.top_role >= bot_member.top_role:
-        return (
-            f"❌ **역할 순서 권한 오류가 발생했어요.** {member.mention} 님의 최상위 역할이 "
-            f"제 최상위 역할({bot_member.top_role.mention})보다 높거나 같아서 처리할 수 없어요."
-        )
-    return None
-
-
-@app_commands.command(name="추방", description="멤버를 추방해요. (확인 버튼)")
+@app_commands.command(name="추방", description="멤버를 추방해요.")
 @app_commands.describe(
     member="추방할 멤버를 선택해주세요.",
     reason="추방 사유. 기본값: 사유 없음",
@@ -54,6 +128,10 @@ async def kick_slash(
 ):
     if not interaction.user.guild_permissions.kick_members:
         await interaction.response.send_message("❌ 이 명령어를 실행할 권한이 없어요", ephemeral=True)
+        return
+
+    if member.id == interaction.user.id:
+        await interaction.response.send_message("❌ 본인을 추방할 수 없어요.", ephemeral=True)
         return
 
     precheck_error = check_kick_possible(interaction.guild, member)

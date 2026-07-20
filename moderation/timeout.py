@@ -179,6 +179,10 @@ async def timeout_slash(
         await interaction.response.send_message("❌ 이 명령어를 사용할 권한이 없어요.", ephemeral=True)
         return
 
+    if member.id == interaction.user.id:
+        await interaction.response.send_message("❌ 본인을 타임아웃할 수 없어요.", ephemeral=True)
+        return
+
     timeout_duration = parse_duration(duration)
     if timeout_duration is None:
         await interaction.response.send_message(
