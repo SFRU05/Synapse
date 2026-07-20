@@ -8,6 +8,7 @@ from infomations.server_info import serverinfo_slash
 from infomations.user_info import userinfo_slash
 from infomations.avatar_info import avatar_slash
 from moderation.kick import kick_slash
+from msg_clear import setup_msg_clear
 
 from moderation.timeout import timeout_slash, pardon_slash
 from moderation.ban import ban_slash
@@ -51,6 +52,7 @@ intents.members = True
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
 
+setup_msg_clear(bot)
 
     ### 슬래시 커맨드 명령어 모음 ###
 bot.tree.add_command(stock_slash) # 주식 보여주기
