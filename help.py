@@ -84,6 +84,7 @@ async def help_slash(
         embed.add_field(name="차단", value="해당 유저를 차단해요.", inline=False)
         embed.add_field(name="타임아웃", value="사용자를 타임아웃(채팅 금지)해요.", inline=False)
         embed.add_field(name="pardon", value="해당 유저의 타임아웃을 해제해요.", inline=False)
+        embed.add_field(name="청소", value="메시지를 대량으로 삭제할 수 있어요. (100개)\n메시지 우클릭에서 앱 메뉴를 통해서도 지울 수 있어요.", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     elif cat == "주식":
