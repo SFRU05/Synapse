@@ -24,7 +24,7 @@ async def userinfo_slash(
     embed.set_thumbnail(url=member.display_avatar.url if member.display_avatar else None)
     embed.add_field(name="사용자 고유 ID", value=member.id, inline=False)
     embed.add_field(name="별명", value=member.nick if hasattr(member, "nick") and member.nick else "없음", inline=True)
-    embed.add_field(name="사용자명", value=member.display_name, inline=True)
+    embed.add_field(name="사용자명", value=f"{member}", inline=True)
     embed.add_field(
         name="계정 생성 시간",
         value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"),
