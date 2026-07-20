@@ -526,4 +526,4 @@ async def warning_settings(interaction: discord.Interaction):
         if settings['ban_count'] > 0: punishments.append(f"밴({settings['ban_count']}회)")
         embed.add_field(name="아래와 같이 자동으로 중재돼요.", value=" ➡️ ".join(punishments), inline=False)
 
-    await interaction.response.send_message(embed=embed, view=SettingsButtonView(settings))
+    await interaction.response.send_message(embed=embed, view=SettingsButtonView(settings), ephemeral=True)
