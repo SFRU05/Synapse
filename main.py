@@ -51,6 +51,7 @@ intents.members = True
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 setup_msg_clear(bot)
 
@@ -85,6 +86,8 @@ async def on_ready():
     await bot.load_extension("jumbo_emoji.jumbo_emoji")
     await bot.load_extension("jumbo_emoji.settings")
     await bot.load_extension("develop_function.command_sync")
+    await bot.load_extension('openai_chat')
+    await bot.load_extension("summarize")
     change_status.start()
 
     await bot.tree.sync()  # 슬래시 명령어 동기화
