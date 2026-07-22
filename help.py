@@ -103,7 +103,7 @@ class CommandSelect(Select):
     async def callback(self, interaction: discord.Interaction):
         group_name = self.values[0]
 
-        if group_name == "음악 재생":
+        if group_name == "음악":
             page_commands, current_page, total_pages = get_music_command_page(0)
             content = (
                 f"# 🎵 {group_name}\n\n{format_music_commands(page_commands)}"
