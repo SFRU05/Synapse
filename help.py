@@ -1,97 +1,128 @@
 import discord
 from discord import app_commands
+from discord.ui import Select, View
+
+# 명령어 정보 딕셔너리
+COMMANDS_INFO = {
+    "추첨": ("📌", "일반", "랜덤 추첨기를 실행해요."),
+
+    "재생 시작": ("🎵", "음악", "YouTube에서 곡을 검색하거나 URL로 재생해요."),
+    "재생 일시정지": ("⏸️", "음악", "재생을 일시정지해요."),
+    "재생 계속": ("▶️", "음악", "일시정지된 재생을 계속해요."),
+    "재생 정지": ("⏹️", "음악", "재생을 멈추고 대기열을 초기화해요."),
+    "재생 이전": ("⏮️", "음악", "이전 곡으로 돌아갈게요."),
+    "재생 다음": ("⏭️", "음악", "다음 곡으로 넘어갈게요."),
+    "재생 반복": ("🔁", "음악", "반복 모드를 설정할게요."),
+    "재생 자동재생": ("🎧", "음악", "작곡가의 다른 음악을 자동재생할게요."),
+    "재생 지금": ("📍", "음악", "현재 재생 중인 곡 정보를 표시해요."),
+    "재생 나가": ("🚪", "음악", "봇을 음성 채널에서 내보내요."),
+    "대기열 확인": ("📋", "음악", "현재 대기열을 표시해요."),
+    "대기열 셔플": ("🔀", "음악", "대기열을 무작위로 섞어요."),
+    "대기열 삭제": ("🗑️", "음악", "대기열에서 특정 곡을 삭제해요."),
+    "대기열 초기화": ("🧹", "음악", "대기열을 전부 비워요."),
+    "볼륨 확인": ("🔊", "음악", "현재 볼륨을 확인해요."),
+    "볼륨 설정": ("🔉", "음악", "볼륨을 설정해요. (0-100)"),
+
+    "유저정보": ("👤", "정보", "유저 정보를 확인해요."),
+    "서버정보": ("🏠", "정보", "서버의 정보를 확인해요."),
+    "봇정보": ("🤖", "정보", "봇의 정보를 확인해요."),
+    "아바타": ("🖼️", "정보", "사용자의 아바타를 불러와요."),
+
+    "추방": ("⛔", "관리", "해당 유저를 추방해요."),
+    "차단": ("🚫", "관리", "해당 유저를 차단해요."),
+    "타임아웃": ("⏱️", "관리", "사용자를 타임아웃(채팅 금지)해요."),
+    "pardon": ("✅", "관리", "해당 유저의 타임아웃을 해제해요."),
+    "청소": ("🧹", "관리", "메시지를 대량으로 삭제할 수 있어요. (100개)\n메시지 우클릭에서 앱 메뉴를 통해서도 지울 수 있어요."),
+
+    "주식": ("📈", "주식", "해당 주식의 현재 주가를 확인해요."),
+    "관심종목": ("⭐", "주식", "등록한 관심 종목을 확인해요."),
+}
+
+# 그룹화된 명령어들 (드롭다운 옵션)
+COMMAND_GROUPS = {
+    "음악 재생": {
+        "emoji": "🎵",
+        "content": "준비 중이에요. 잠시만 기다려 주세요!"
+    },
+    "대기열 관리": {
+        "emoji": "📋",
+        "content": "준비 중이에요. 잠시만 기다려 주세요!"
+    },
+    "볼륨 설정": {
+        "emoji": "🔊",
+        "content": "준비 중이에요. 잠시만 기다려 주세요!"
+    },
+    "정보": {
+        "emoji": "👤",
+        "content": "</아바타:1504866630000443520> - 다른 사람이나 본인의 프로필 사진을 불러올 수 있어요!\n> </아바타:1504866630000443520> [대상: 선택 사항]\n-# 대상을 지정하지 않으면 자신의 정보를 불러와요.\n\n</유저정보:1504866630352769046> - 다른 사람이나 본인의 정보를 불러올 수 있어요!\n> </유저정보:1504866630352769046> [대상: 선택 사항]\n-# 대상을 지정하지 않으면 자신의 정보를 불러와요.\n\n</봇정보:1504866630352769044> - 봇에 대해 알아볼 수 있어요.\n✨ 저에 대해 알아보실 수 있는 정보에요. **업타임, 지연 속도, 제가 몇 명과 놀고 있는지** 볼 수 있어요!\n\n</서버정보:1504866630352769045> - 지금 보고 있는 서버의 정보를 볼 수 있어요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    },
+    "경고 명령어": {
+        "emoji": "⚠️",
+        "content": "</경고 부여:1506238477975420969> - 대상에게 경고를 부여해요.\n> </경고 부여:1506238477975420969> [사유: 선택 사항]\n\n</경고 관리:1506238477975420969> - 대상의 경고를 관리할 수 있어요.\n대상의 경고 시기, 경고 이유, 경고 삭제 등을 진행할 수 있어요.\n\n</경고 설정:1506238477975420969> - 서버의 자동 제재 시스템을 관리할 수 있어요.\n경고 누적에 따른 **서버의 자동 제재 시스템**을 사용할 수 있어요.\n타임아웃과 차단 자동 제재를 지원하고, 비활성화도 가능해요.\n\n⚠️ **관리자 권한**이 있는 유저만 사용할 수 있는 명령어에요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    },
+    "관리": {
+        "emoji": "🔨",
+        "content": "</타임아웃:1504866630000443517> - 대상을 타임아웃 할 수 있어요.\n> </타임아웃:1504866630000443517> [대상] [1d2h20m의 형식으로 시간 입력] [사유: 선택 사항]\n-# **최대 7일까지 적용할 수 있어요.**\n\n</차단:1504866630000443519> - 대상을 서버에서 차단할 수 있어요.\n> </차단:1504866630000443519> [대상] [사유: 선택 사항]\n\n</추방:1504866630000443518> - 대상을 서버에서 추방할 수 있어요.\n> </추방:1504866630000443518> [대상] [사유: 선택 사항]\n\n⚠️ **관리자 권한**이 있는 유저만 사용할 수 있는 명령어에요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    },
+    "청소": {
+        "emoji": "🧹",
+        "content": "청소 명령어는 두 가지 방법으로 실행할 수 있어요.\n### 슬래시 커맨드로 실행하기\n> </청소:1528774219624743033> [ 삭제할 메시지 개수 ]\n### 컨텍스트 메뉴 이용하기 __(구간 삭제 지원)__\n1. 메시지를 우클릭하면 **\"앱\"** 표시가 있어요. 거기에서 **여기부터/여기까지 청소**를 눌러주세요.\n2. 시작 지점이나 끝 지점이 설정되었을 거에요. 60초 안에 **1번**과 똑같이 시작/끝 지점을 설정해주세요.\n-# 혹은 \"이 메시지부터 아래까지 모두 청소\" 버튼을 통해서 최하단 메시지까지 바로 지울 수 있어요.\n\n아 참! 메시지는 **1회 최대 100개** 까지 삭제할 수 있고, 14일이 지난 메시지는 삭제할 수 없어요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    },
+    "이모지 크게 보기": {
+        "emoji": "😀",
+        "content": "</점보이모지:1528409935895986246> - 제가 이모지를 크게 키워드려요!\n✌️ 저는 **커스텀 이모지** 뿐만 아니라 **기본 이모지**도 키워드릴 수 있어요!\n기본 세팅은 두개 옵션 다 **\"꺼짐\"**으로 되어 있어요.\n-# **이모지 단일로 보내신 경우에만 자동으로 켜져요!**\n\n⚠️ **관리자 권한**이 있는 유저만 사용할 수 있는 명령어에요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    },
+    "주식 명령어": {
+        "emoji": "📈",
+        "content": "</주식:1504866630000443514> - 주식 종목 검색기능\n> </주식:1504866630000443514> [티거/종목명] [간격] 으로 검색할 수 있어요.\n**한국증권거래소, 미국증권거래소 상장 종목**에서 검색할 수 있어요.\n검색 후 `⭐ 관심종목 추가하기` 버튼을 눌러 관심 종목에 추가할 수 있어요.\n\n이제 관심 종목 검색 방법을 알려드릴게요!\n</관심종목:1504866630000443515> 을 입력하시면 지금까지 등록하신 관심 종목들을 열람하실 수 있어요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    },
+    "TTS (Text-to-Speech)": {
+        "emoji": "🔊",
+        "content": "</tts 열기:1529131037073084486> - TTS 기능을 설정하고 실행할 수 있어요.\n>  **설정 가능한 옵션:** 언어 설정, 빠르기 설정\n💦 아직까지는 음성채널 옆에 있는 **채팅 열기**를 통해 나타나는 음성채널 채팅에서만 사용할 수 있어요.\n곧 채널을 지정할 수 있는 기능과 TTS 모델이 바뀔 예정이니, 기다려 주시면 감사할 것 같아요!\n-# 음성 채널에 아무도 들어와 있지 않으면 자동으로 나가요.\n\n</tts 열기:1529131037073084486> - TTS 기능을 종료하고 음성 채팅에서 나가요.\n-# 다른 궁긍한 것이 있나요? 아래의 선택 상자에서 골라보세요!"
+    }
+}
 
 
-@app_commands.command(name="도움", description="봇 명령어 도움말을 확인해요.")
-@app_commands.describe(category="도움말 카테고리를 선택해 주세요.")
-@app_commands.choices(
-    category=[
-        app_commands.Choice(name="일반", value="일반"),
-        app_commands.Choice(name="음악", value="음악"),
-        app_commands.Choice(name="관리", value="관리"),
-        app_commands.Choice(name="정보", value="정보"),
-        app_commands.Choice(name="주식", value="주식"),
-    ]
-)
-async def help_slash(
-        interaction: discord.Interaction,
-        category: app_commands.Choice[str] = None
-):
-    if category is None:
-        embed = discord.Embed(
-            title="도움말",
-            description="사용 가능한 명령어 카테고리예요.",
-            color=discord.Color.blue()
+class CommandSelect(Select):
+    def __init__(self):
+        # 그룹들을 SelectOption으로 생성
+        options = [
+            discord.SelectOption(
+                label=group_name,
+                value=group_name,
+                emoji=group_info["emoji"]
+            )
+            for group_name, group_info in COMMAND_GROUPS.items()
+        ]
+
+        super().__init__(
+            placeholder="명령어 그룹을 선택해 주세요.",
+            min_values=1,
+            max_values=1,
+            options=options
         )
-        embed.add_field(name="일반", value="일반 명령어 목록을 확인하려면 카테고리에서 `일반`을 선택해 주세요.", inline=False)
-        embed.add_field(name="음악", value="음악 명령어 목록을 확인하려면 카테고리에서 `음악`을 선택해 주세요.", inline=False)
-        embed.add_field(name="관리", value="관리 명령어 목록을 확인하려면 카테고리에서 `관리`를 선택해 주세요.", inline=False)
-        embed.add_field(name="정보", value="정보 명령어 목록을 확인하려면 카테고리에서 `정보`를 선택해 주세요.", inline=False)
-        embed.add_field(name="주식", value="주식 명령어 목록을 확인하려면 카테고리에서 `주식`을 선택해 주세요.", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
 
-    cat = category.value
-    if cat == "일반":
-        embed = discord.Embed(title="일반 명령어", description="일반 명령어 목록이에요.", color=discord.Color.green())
-        embed.add_field(name="추첨", value="랜덤 추첨기를 실행해요.", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    async def callback(self, interaction: discord.Interaction):
+        group_name = self.values[0]
+        group_info = COMMAND_GROUPS[group_name]
+        emoji = group_info["emoji"]
+        content_text = group_info["content"]
 
-    elif cat == "음악":
-        embed = discord.Embed(title="🎵 음악 명령어 도움말", description="음악 명령어 목록이에요. 원하는 기능을 찾아보세요.",
-                              color=discord.Color.orange())
+        # 그룹에 속한 내용을 텍스트로 표시
+        content = f"# {emoji} {group_name}\n\n{content_text}"
 
-        # 1. 재생 관련 문단
-        embed.add_field(name="✨ [ 재생 및 제어 ]", value="━" * 15, inline=False)
-        embed.add_field(name="재생 시작", value="YouTube에서 곡을 검색하거나 URL로 재생해요.", inline=False)
-        embed.add_field(name="재생 일시정지", value="재생을 일시정지해요.", inline=False)
-        embed.add_field(name="재생 계속", value="일시정지된 재생을 계속해요.", inline=False)
-        embed.add_field(name="재생 정지", value="재생을 멈추고 대기열을 초기화해요.", inline=False)
-        embed.add_field(name="재생 이전", value="이전 곡으로 돌아갈게요.", inline=False)
-        embed.add_field(name="재생 다음", value="다음 곡으로 넘어갈게요.", inline=False)
-        embed.add_field(name="재생 반복", value="반복 모드를 설정할게요.", inline=False)
-        embed.add_field(name="재생 자동재생", value="작곡가의 다른 음악을 자동재생할게요.", inline=False)
-        embed.add_field(name="재생 지금", value="현재 재생 중인 곡 정보를 표시해요.", inline=False)
-        embed.add_field(name="재생 나가", value="봇을 음성 채널에서 내보내요.", inline=False)
+        # ephemeral 메시지 수정
+        await interaction.response.edit_message(content=content, view=HelpView())
 
-        # 2. 대기열 관련 문단
-        embed.add_field(name="\u200b", value="━" * 15, inline=False)  # 구분을 위한 빈 공간 및 가로선
-        embed.add_field(name="🎶 [ 대기열 관리 ]", value="━" * 15, inline=False)
-        embed.add_field(name="대기열 확인", value="현재 대기열을 표시해요.", inline=False)
-        embed.add_field(name="대기열 셔플", value="대기열을 무작위로 섞어요.", inline=False)
-        embed.add_field(name="대기열 삭제", value="대기열에서 특정 곡을 삭제해요.", inline=False)
-        embed.add_field(name="대기열 초기화", value="대기열을 전부 비워요.", inline=False)
 
-        # 3. 볼륨 관련 문단
-        embed.add_field(name="\u200b", value="━" * 15, inline=False)
-        embed.add_field(name="🔊 [ 음량 설정 ]", value="━" * 15, inline=False)
-        embed.add_field(name="볼륨 확인", value="현재 볼륨을 확인해요.", inline=False)
-        embed.add_field(name="볼륨 설정", value="볼륨을 설정해요. (0-100)", inline=False)
+class HelpView(View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(CommandSelect())
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    elif cat == "정보":
-        embed = discord.Embed(title="정보 명령어", description="정보 명령어 목록이에요.", color=discord.Color.orange())
-        embed.add_field(name="유저정보", value="유저 정보를 확인해요.", inline=False)
-        embed.add_field(name="서버정보", value="서버의 정보를 확인해요.", inline=False)
-        embed.add_field(name="봇정보", value="봇의 정보를 확인해요.", inline=False)
-        embed.add_field(name="아바타", value="사용자의 아바타를 불러와요.", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+@app_commands.command(name="도움말", description="Synapse 봇 도움말 확인")
+async def help_slash(interaction: discord.Interaction):
+    content = "# ✨ Synapse 도움말\n도움말을 열어주셨네요!\n안녕하세요! Synapse에요. TTS, 서버 관리 기능, 챗봇 기능을 써보시지 않으실래요?\n\n도움이 필요하세요? [공식 서포트 서버](<https://discord.gg/yE8jvq2BBR>)나 저의 DM으로 모실게요!\n-# 아래 선택 박스에서 명령어를 찾아볼 수 있어요!\n-# 그리고 저의 다른 이름을 아시나요...? 바로 설탕이에요! ✌️"
 
-    elif cat == "관리":
-        embed = discord.Embed(title="관리 명령어", description="관리 명령어 목록이에요.", color=discord.Color.red())
-        embed.add_field(name="추방", value="해당 유저를 추방해요.", inline=False)
-        embed.add_field(name="차단", value="해당 유저를 차단해요.", inline=False)
-        embed.add_field(name="타임아웃", value="사용자를 타임아웃(채팅 금지)해요.", inline=False)
-        embed.add_field(name="pardon", value="해당 유저의 타임아웃을 해제해요.", inline=False)
-        embed.add_field(name="청소", value="메시지를 대량으로 삭제할 수 있어요. (100개)\n메시지 우클릭에서 앱 메뉴를 통해서도 지울 수 있어요.", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    elif cat == "주식":
-        embed = discord.Embed(title="주식 명령어", description="주식 명령어 목록이에요.", color=discord.Color.red())
-        embed.add_field(name="주식", value="해당 주식의 현재 주가를 확인해요.", inline=False)
-        embed.add_field(name="관심종목", value="등록한 관심 종목을 확인해요.", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    else:
-        await interaction.response.send_message("존재하지 않는 카테고리에요. `/도움` 명령어로 사용 가능한 카테고리를 확인해 주세요.", ephemeral=True)
+    await interaction.response.send_message(content=content, view=HelpView(), ephemeral=True)
