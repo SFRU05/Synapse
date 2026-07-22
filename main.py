@@ -115,6 +115,69 @@ async def ping(ctx):
     embed = discord.Embed(title="🏓 Pong!", description=f"현재 핑: {latency}ms", color=discord.Color.green())
     await ctx.send(embed=embed)
 
+def _opt_type_value(opt_type) -> int | None:
+    if isinstance(opt_type, int):
+        return opt_type
+    v = getattr(opt_type, "value", None)
+    if isinstance(v, int):
+        return v
+    return None
+
+
+def _walk_options(prefix: str, cmd_id: int | None, options: list, out: list[str]):
+    if not options:
+        out.append(f"{prefix} | id={cmd_id}" if cmd_id else prefix)
+        return
+
+    for opt in options:
+        t = _opt_type_value(getattr(opt, "type", None))
+        name = getattr(opt, "name", "unknown")
+        if t in (1, 2):
+            next_prefix = f"{prefix} {name}"
+            children = getattr(opt, "options", []) or []
+            _walk_options(next_prefix, cmd_id, children, out)
+
+
+def _format_app_commands(cmds, scope_name: str) -> str:
+    lines: list[str] = [f"== {scope_name} =="]
+
+    if not cmds:
+        lines.append("(none)")
+        return "\n".join(lines)
+
+    for c in cmds:
+        base = f"/{c.name}"
+        options = getattr(c, "options", []) or []
+
+        has_sub = any(_opt_type_value(getattr(o, "type", None)) in (1, 2) for o in options)
+        if not has_sub:
+            lines.append(f"{base} | id={c.id}")
+            continue
+
+        _walk_options(base, c.id, options, lines)
+
+    return "\n".join(lines)
+
+
+@bot.command(name="cmdids")
+@commands.is_owner()
+async def cmdids(ctx: commands.Context):
+    blocks = []
+
+    # 글로벌
+    global_cmds = await bot.tree.fetch_commands()
+    blocks.append(_format_app_commands(global_cmds, "Global Commands"))
+
+    # 길드
+    if ctx.guild:
+        guild_cmds = await bot.tree.fetch_commands(guild=discord.Object(id=ctx.guild.id))
+        blocks.append(_format_app_commands(guild_cmds, f"Guild Commands ({ctx.guild.name})"))
+
+    text = "\n\n".join(blocks)
+
+    for i in range(0, len(text), 1900):
+        await ctx.send(f"```txt\n{text[i:i+1900]}\n```")
+
 # 서버 로그 표시
 @bot.event
 async def on_message_delete(message):
