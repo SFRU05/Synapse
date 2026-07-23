@@ -82,7 +82,6 @@ class ChatBot(commands.Cog):
                 self.client.chat.completions.create,
                 model="gpt-5.4-nano",
                 messages=messages,
-                max_tokens=400,
                 temperature=1,
             )
 
