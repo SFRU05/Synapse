@@ -156,9 +156,9 @@ class ChatBot(commands.Cog):
 
             stream = await asyncio.to_thread(
                 self.client.chat.completions.create,
-                model="gpt-4o-mini",
+                model="gpt-5.4-nano",
                 messages=messages,
-                temperature=1,
+                temperature=0.8,
                 stream=True,
             )
 
