@@ -9,6 +9,7 @@ from infomations.user_info import userinfo_slash
 from infomations.avatar_info import avatar_slash
 from moderation.kick import kick_slash
 from msg_clear import setup_msg_clear
+from worship import setup_worship
 
 from moderation.timeout import timeout_slash, pardon_slash
 from moderation.ban import ban_slash
@@ -53,6 +54,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN") # TOKEN
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
+setup_worship(bot)
 setup_msg_clear(bot)
 
     ### 슬래시 커맨드 명령어 모음 ###
