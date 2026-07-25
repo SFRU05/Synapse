@@ -5,6 +5,7 @@ from gtts import gTTS
 import asyncio
 import os
 import uuid
+import re
 
 LANG_CHOICES = {
     "한국어": "ko",
@@ -13,7 +14,7 @@ LANG_CHOICES = {
 }
 
 SPEED_CHOICES = {
-    "보통": False,   # gTTS slow=False
+    "보통": False,  # gTTS slow=False
     "느리게": True,  # gTTS slow=True
 }
 
@@ -34,6 +35,13 @@ class TTSCog(commands.Cog):
                 "slow": False,
             }
         return self.guild_settings[guild_id]
+
+    def clean_text_for_tts(self, text: str) -> str:
+        text = re.sub(r'https?://\S+|www\.\S+', '', text)
+        text = re.sub(r'<a?:[a-zA-Z0-9_]+:[0-9]+>', '', text)
+        text = re.sub(r'[\U00010000-\U0010ffff]', '', text)
+        text = re.sub(r'<@&?[0-9]+>|<#[0-9]+>', '', text)
+        return re.sub(r'\s+', ' ', text).strip()
 
     async def generate_tts(self, text: str, lang: str, slow: bool, filename: str):
         tts = gTTS(text=text, lang=lang, slow=slow)
@@ -121,12 +129,12 @@ class TTSCog(commands.Cog):
         if vc is None or not vc.is_connected() or vc.channel is None:
             return
 
-        # ✅ 네 원래 코드 방식 유지:
         # 음성채널 옆 채팅에서 온 메시지일 때만 읽기
         if message.channel.id != vc.channel.id:
             return
 
-        text = message.content.strip()
+        raw_text = message.content.strip()
+        text = self.clean_text_for_tts(raw_text)
         if not text:
             return
 
