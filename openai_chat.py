@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 import asyncio
 from dotenv import load_dotenv
-from duckduckgo_search import DDGS
 
 load_dotenv()
 
@@ -52,14 +51,6 @@ class SettingsView(ui.View):
         super().__init__()
         self.cog = cog
         self.guild_id = guild_id
-
-    @ui.button(label="🌐 웹 검색", style=discord.ButtonStyle.primary)
-    async def web_search_button(self, interaction: discord.Interaction, button: ui.Button):
-        is_enabled = self.cog.toggle_web_search(self.guild_id)
-        button.label = "🌐 웹 검색" + (" ✅" if is_enabled else " ❌")
-
-        embed = self.cog.get_settings_embed(self.guild_id)
-        await interaction.response.edit_message(embed=embed, view=self)
 
     @ui.button(label="💾 저장", style=discord.ButtonStyle.success)
     async def save_button(self, interaction: discord.Interaction, button: ui.Button):
@@ -136,31 +127,15 @@ class ChatBot(commands.Cog):
         if guild_id not in self.config:
             self.config[guild_id] = {
                 "enabled": True,
-                "web_search": False,
                 "disabled_by_dev": False
             }
             self.save_config()
         return self.config[guild_id].get("enabled", True)
 
-    def is_web_search_enabled(self, guild_id):
-        guild_id = str(guild_id)
-        if guild_id not in self.config:
-            return False
-        return self.config[guild_id].get("web_search", False)
-
-    def toggle_web_search(self, guild_id):
-        guild_id = str(guild_id)
-        if guild_id not in self.config:
-            self.config[guild_id] = {"enabled": True, "web_search": False, "disabled_by_dev": False}
-        self.config[guild_id]["web_search"] = not self.config[guild_id].get("web_search", False)
-        self.save_config()
-        return self.config[guild_id]["web_search"]
-
     def toggle(self, guild_id, status, disabled_by_dev=False):
         guild_id = str(guild_id)
         self.config[guild_id] = {
             "enabled": status,
-            "web_search": self.config.get(guild_id, {}).get("web_search", False),
             "disabled_by_dev": disabled_by_dev if not status else False
         }
         self.save_config()
@@ -185,11 +160,9 @@ class ChatBot(commands.Cog):
         )
 
         status = "✅ 활성화" if config.get("enabled", True) else "❌ 비활성화"
-        web_search = "✅ ON" if config.get("web_search", False) else "❌ OFF"
         dev_disabled = "🔒 YES" if config.get("disabled_by_dev", False) else "❌ NO"
 
         embed.add_field(name="🤖 챗봇 상태", value=status, inline=False)
-        embed.add_field(name="🌐 웹 검색", value=web_search, inline=True)
         embed.add_field(name="🔐 개발자 비활성화", value=dev_disabled, inline=True)
         embed.set_footer(text="설정은 자동으로 저장됩니다.")
 
@@ -210,23 +183,10 @@ class ChatBot(commands.Cog):
             del history[: len(history) - max_messages]
 
     def sanitize_text(self, text: str) -> str:
-        """@everyone 및 @here 멘션 방지를 위해 Zero-Width Space(\\u200b) 추가"""
+        """@everyone 및 @here 멘션 방지를 위해 Zero-Width Space(\u200b) 추가"""
         if not text:
             return text
         return text.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
-
-    def search_web(self, query):
-        try:
-            ddgs = DDGS()
-            results = ddgs.text(query, max_results=3)
-
-            search_results = ""
-            for i, result in enumerate(results, 1):
-                search_results += f"{i}. {result['title']}\n   {result['body']}\n"
-
-            return search_results if search_results else "검색 결과가 없어요."
-        except Exception as e:
-            return f"검색 중 오류가 발생했어요: {str(e)}"
 
     def format_args_kr(self, args: dict) -> str:
         """JSON 인자를 읽기 쉬운 한국어 텍스트 패러그래프로 변환"""
@@ -374,7 +334,7 @@ class ChatBot(commands.Cog):
                         "properties": {
                             "role_name": {"type": "string", "description": "역할 이름"},
                             "color": {"type": "string", "enum": ["빨강", "파랑", "초록", "노랑", "보라", "주황", "분홍"],
-                                      "description": "역할 색상 (선택)"}
+                                        "description": "역할 색상 (선택)"}
                         },
                         "required": ["role_name"]
                     }
@@ -698,18 +658,12 @@ class ChatBot(commands.Cog):
         """실시간 스트리밍 답변 및 서버 관리 권한 검증 / 승인 재확인 버튼 UI 제공"""
         try:
             history = self._get_history(key)
-            web_search_enabled = self.is_web_search_enabled(guild_id)
-            web_search_info = ""
 
             system_content = (
-                "너는 16살 한국 여자 캐릭터야. "
+                "너는 16살 한국 여자 캐릭터야.\n"
                 "존댓말로 다정하게 대답해."
                 "\n\n사용자가 서버 구조를 변경하거나 권한/채널 정보를 알고 싶으면 함수를 사용해서 도와줘."
             )
-
-            if web_search_enabled:
-                web_search_info = f"\n\n[웹 검색 결과]\n{self.search_web(user_message)}"
-                system_content += "\n\n사용자가 웹 검색 결과를 제공했으면 그 정보를 바탕으로 답변해."
 
             messages = [{"role": "system", "content": system_content}]
 
@@ -718,7 +672,7 @@ class ChatBot(commands.Cog):
             else:
                 messages.extend(history)
 
-            messages.append({"role": "user", "content": user_message + web_search_info})
+            messages.append({"role": "user", "content": user_message})
 
             allowed_mentions = discord.AllowedMentions(everyone=False, roles=False)
 
@@ -896,6 +850,7 @@ class ChatBot(commands.Cog):
                             for tc in admin_required_calls:
                                 fn_name = tc["function"]["name"]
                                 args = json.loads(tc["function"]["arguments"])
+
                                 result = await self.execute_server_function(guild, fn_name, args)
 
                                 messages.append({
