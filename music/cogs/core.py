@@ -29,7 +29,7 @@ YDL_OPTS = {
 
 # 파일 재생용 FFmpeg 옵션 (속도 및 싱크 문제 해결)
 FFMPEG_OPTS_FILE = {
-    "options": "-vn -ar 48000 -ac 2",
+    "options": "-vn",
 }
 
 def _fetch_track(query: str, requester: discord.Member) -> Track | None:
