@@ -1,4 +1,4 @@
-
+import os
 import aiosqlite
 import random
 import time
@@ -21,6 +21,12 @@ class LevelDB:
         self.db_path = db_path
 
     async def init(self):
+        # 1. DB 파일이 저장될 폴더 경로 자동 생성
+        folder_path = os.path.dirname(self.db_path)
+        if folder_path:
+            os.makedirs(folder_path, exist_ok=True)
+
+        # 2. 데이터베이스 연결 및 테이블 생성
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS users (
