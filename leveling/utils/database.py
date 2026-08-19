@@ -107,7 +107,7 @@ class LevelDB:
         - level, exp, need(다음 레벨까지 필요 exp)
         - total_messages
         - today_count
-        - weekly: 최근 7일 [(날짜, 요일라벨, count), ...] (오래된 날짜 -> 오늘 순)
+        - weekly: 이번 주 일~토 [(날짜, 요일라벨, count), ...] (항상 일요일부터 토요일 순서 고정)
         """
         user_id, guild_id = str(user_id), str(guild_id)
 
@@ -119,13 +119,19 @@ class LevelDB:
             row = await cur.fetchone()
             level, exp, total_messages = row if row else (0, 0, 0)
 
-            weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
+            weekday_kr = ["일", "월", "화", "수", "목", "금", "토"]
             weekly = []
             today_count = 0
             week_total = 0
 
-            for i in range(6, -1, -1):  # 6일 전 -> 오늘
-                day = datetime.now() - timedelta(days=i)
+            now = datetime.now()
+            today_str = now.strftime("%Y-%m-%d")
+            # 이번 주 일요일 구하기 (Python weekday(): 월=0 ... 일=6)
+            days_since_sunday = (now.weekday() + 1) % 7
+            sunday = now - timedelta(days=days_since_sunday)
+
+            for i in range(7):  # 일요일 -> 토요일 고정 순서
+                day = sunday + timedelta(days=i)
                 date_str = day.strftime("%Y-%m-%d")
                 cur2 = await db.execute(
                     "SELECT count FROM daily_messages WHERE user_id=? AND guild_id=? AND date=?",
@@ -133,10 +139,9 @@ class LevelDB:
                 )
                 r = await cur2.fetchone()
                 count = r[0] if r else 0
-                label = weekday_kr[day.weekday()]
-                weekly.append((date_str, label, count))
+                weekly.append((date_str, weekday_kr[i], count))
                 week_total += count
-                if i == 0:
+                if date_str == today_str:
                     today_count = count
 
         return {
@@ -148,3 +153,56 @@ class LevelDB:
             "week_total": week_total,
             "weekly": weekly,
         }
+
+    async def get_weekly_leaderboard(self, guild_id: int, user_id: int, top_n: int = 10) -> dict:
+        """
+        이번 주(일~토) 채팅수 기준 서버 순위.
+        반환값: {
+            "top": [{"user_id", "weekly_count", "level", "exp", "rank"}, ...],  # 최대 top_n개
+            "me": {"user_id", "weekly_count", "level", "exp", "rank"},          # rank는 참여자가 없으면 None
+            "total_participants": int
+        }
+        """
+        guild_id, user_id = str(guild_id), str(user_id)
+        now = datetime.now()
+        days_since_sunday = (now.weekday() + 1) % 7
+        sunday = now - timedelta(days=days_since_sunday)
+        saturday = sunday + timedelta(days=6)
+        start_str, end_str = sunday.strftime("%Y-%m-%d"), saturday.strftime("%Y-%m-%d")
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cur = await db.execute("""
+                WITH week_totals AS (
+                    SELECT user_id, SUM(count) AS weekly_count
+                    FROM daily_messages
+                    WHERE guild_id = ? AND date BETWEEN ? AND ?
+                    GROUP BY user_id
+                )
+                SELECT w.user_id, w.weekly_count,
+                       COALESCE(u.level, 0) AS level,
+                       COALESCE(u.exp, 0) AS exp,
+                       RANK() OVER (ORDER BY w.weekly_count DESC) AS rnk
+                FROM week_totals w
+                LEFT JOIN users u ON u.user_id = w.user_id AND u.guild_id = ?
+                ORDER BY rnk ASC
+            """, (guild_id, start_str, end_str, guild_id))
+            rows = await cur.fetchall()
+
+            entries = [
+                {"user_id": r[0], "weekly_count": r[1], "level": r[2], "exp": r[3], "rank": r[4]}
+                for r in rows
+            ]
+            top = entries[:top_n]
+            me = next((e for e in entries if e["user_id"] == user_id), None)
+
+            if me is None:
+                # 이번 주 채팅 기록이 없는 유저 -> 레벨 정보만 조회
+                cur2 = await db.execute(
+                    "SELECT level, exp FROM users WHERE user_id=? AND guild_id=?",
+                    (user_id, guild_id)
+                )
+                r2 = await cur2.fetchone()
+                level, exp = r2 if r2 else (0, 0)
+                me = {"user_id": user_id, "weekly_count": 0, "level": level, "exp": exp, "rank": None}
+
+        return {"top": top, "me": me, "total_participants": len(entries)}
