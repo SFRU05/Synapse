@@ -91,6 +91,7 @@ async def on_ready():
     await bot.load_extension("tts_voice.cogs.tts")
     await bot.load_extension("currency")
     await bot.load_extension("leveling.cogs.leveling")
+    await bot.load_extension("server_analyze")
     change_status.start()
 
     await bot.tree.sync()  # 슬래시 명령어 동기화
