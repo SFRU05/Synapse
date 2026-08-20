@@ -49,11 +49,19 @@ class WeeklyStats(commands.Cog):
             if ch.permissions_for(ctx.guild.me).read_message_history
         ]
 
+        # 서버 전체 멤버(봇 제외) 목록 - 채팅 0개인 사람도 결과에 포함시키기 위함
+        # members Intent가 켜져 있어야 정상 동작합니다.
+        all_members = [m async for m in ctx.guild.fetch_members(limit=None) if not m.bot]
+
         await ctx.send(
             f"집계를 시작합니다. (범위: {scope} / {start.date()} ~ {end.date()} "
-            f"/ 채널 수: {len(target_channels)}개)"
+            f"/ 채널 수: {len(target_channels)}개 / 대상 인원: {len(all_members)}명)"
         )
-        status_msg = await ctx.send("수집 준비 중...")
+        status_msg = await ctx.send(embed=discord.Embed(
+            title="채팅량 집계 진행 상황",
+            description="수집 준비 중...",
+            color=discord.Color.blurple(),
+        ))
 
         start_time = time.monotonic()
         last_edit_time = 0.0
@@ -63,7 +71,7 @@ class WeeklyStats(commands.Cog):
         channel_durations = []    # 채널별 소요 시간(초) - 평균 내서 예상 시간 계산에 사용
         total_channel_count = len(target_channels)
 
-        def build_status_text(current_channel_name: str, current_date) -> str:
+        def build_status_embed(current_channel_name: str, current_date) -> discord.Embed:
             elapsed = int(time.monotonic() - start_time)
 
             if channel_durations:
@@ -75,17 +83,37 @@ class WeeklyStats(commands.Cog):
             else:
                 eta_text = "계산 중..."
 
-            lines_status = [
-                f"수집 중... `#{current_channel_name}` "
-                f"({len(completed_channels) + 1}/{total_channel_count}번째 채널) / "
-                f"{current_date} 일자 메시지 처리 중",
-                f"경과 시간: {elapsed}초 / 예상 남은 시간: {eta_text}",
-            ]
+            embed = discord.Embed(
+                title="채팅량 집계 진행 상황",
+                color=discord.Color.blurple(),
+            )
+            embed.add_field(
+                name="현재 채널",
+                value=f"`#{current_channel_name}` ({len(completed_channels) + 1}/{total_channel_count})",
+                inline=True,
+            )
+            embed.add_field(
+                name="처리 중인 날짜",
+                value=str(current_date),
+                inline=True,
+            )
+            embed.add_field(
+                name="경과 시간",
+                value=f"{elapsed}초",
+                inline=True,
+            )
+            embed.add_field(
+                name="예상 남은 시간",
+                value=eta_text,
+                inline=True,
+            )
             if completed_channels:
                 done_text = ", ".join(f"#{n}" for n in completed_channels)
-                lines_status.append(f"완료된 채널: {done_text}")
+                if len(done_text) > 1024:
+                    done_text = done_text[:1000] + " ...(생략)"
+                embed.add_field(name="완료된 채널", value=done_text, inline=False)
 
-            return "\n".join(lines_status)
+            return embed
 
         async def update_status(channel_name: str, current_date, force: bool = False):
             nonlocal last_edit_time
@@ -94,7 +122,7 @@ class WeeklyStats(commands.Cog):
                 return
             last_edit_time = now_t
             try:
-                await status_msg.edit(content=build_status_text(channel_name, current_date))
+                await status_msg.edit(embed=build_status_embed(channel_name, current_date))
             except discord.HTTPException:
                 pass
 
@@ -105,6 +133,10 @@ class WeeklyStats(commands.Cog):
         stats = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         member_names = {}  # id -> 표시 이름 캐시
         channel_names = {}  # id -> 채널 이름 캐시
+
+        # 채팅 0개인 멤버도 결과에 나오도록 미리 이름을 채워둠
+        for m in all_members:
+            member_names[m.id] = m.display_name
 
         # 4. 채널별로 히스토리 순회
         for channel in target_channels:
@@ -136,9 +168,11 @@ class WeeklyStats(commands.Cog):
 
         elapsed_total = int(time.monotonic() - start_time)
         try:
-            await status_msg.edit(
-                content=f"수집 완료! (총 소요 시간: {elapsed_total}초) 결과를 정리하고 있어요..."
-            )
+            await status_msg.edit(embed=discord.Embed(
+                title="채팅량 집계 진행 상황",
+                description=f"수집 완료! (총 소요 시간: {elapsed_total}초)\n결과를 정리하고 있어요...",
+                color=discord.Color.green(),
+            ))
         except discord.HTTPException:
             pass
 
@@ -150,6 +184,8 @@ class WeeklyStats(commands.Cog):
         week_range = range(1, total_weeks + 1) if scope == "이번달" else range(this_week, this_week + 1)
 
         def format_channel_breakdown(channel_counts: dict) -> str:
+            if not channel_counts:
+                return "채팅 없음"
             parts = sorted(channel_counts.items(), key=lambda x: x[1], reverse=True)
             return ", ".join(
                 f"#{channel_names.get(cid, cid)}: {cnt}"
@@ -182,14 +218,26 @@ class WeeklyStats(commands.Cog):
 
         # 전체 합계도 추가 (멤버별 + 채널별 합계 둘 다)
         lines.append("\n" + "=" * 50)
-        lines.append("전체 기간 합계 (멤버별)")
         total_per_member = defaultdict(lambda: defaultdict(int))
         total_per_channel = defaultdict(int)
+
+        # 전체 멤버를 0개 상태로 먼저 등록 (defaultdict라 접근만 해도 빈 dict가 생성됨)
+        for m in all_members:
+            _ = total_per_member[m.id]
+
         for wk_data in stats.values():
             for member_id, channel_counts in wk_data.items():
                 for channel_id, cnt in channel_counts.items():
                     total_per_member[member_id][channel_id] += cnt
                     total_per_channel[channel_id] += cnt
+
+        chatted_count = sum(
+            1 for channel_counts in total_per_member.values() if channel_counts
+        )
+        lines.append(
+            f"전체 기간 합계 (멤버별, 채팅 0개 포함) "
+            f"- 총 {len(all_members)}명 수집 (채팅한 인원: {chatted_count}명)"
+        )
 
         member_grand_totals = [
             (member_id, sum(channel_counts.values()))
