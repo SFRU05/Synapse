@@ -1,29 +1,8 @@
-"""
-주차별(7일 단위) 멤버 채팅량 집계 기능
-----------------------------------------
-사용법 (봇에 이 cog을 로드한 뒤):
-
-    !주간통계                      -> 이번달 1일부터 지금까지, 주차별로 전체 집계
-    !주간통계 이번주                -> 이번달 1일 기준으로 나눈 주차 중, "이번주"에 해당하는 구간만 집계
-    !주간통계 이번달 #일반 #공지     -> 이번달 전체를 지정 채널에서만 집계
-
-- 첫 인자(범위): "이번주" 또는 "이번달" (생략 시 "이번달")
-- 이후 인자: 집계할 채널 멘션 (생략하면 봇이 읽을 수 있는 모든 텍스트 채널을 집계합니다.)
-
-주차 기준:
-- 항상 "이번달 1일"을 1주차의 시작으로 고정합니다. (1~7일=1주차, 8~14일=2주차, ...)
-- "이번주" 범위를 선택하면 오늘이 속한 주차 구간만 잘라서 보여줍니다.
-
-주의:
-- message_content Intent가 반드시 활성화되어 있어야 합니다.
-- 채널 히스토리를 전부 훑기 때문에 서버가 크거나 기간이 길면 시간이 꽤 걸립니다.
-- discord.py 는 v2.x 기준으로 작성했습니다.
-"""
-
 import discord
 from discord.ext import commands
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
+import time
 
 
 class WeeklyStats(commands.Cog):
@@ -72,9 +51,52 @@ class WeeklyStats(commands.Cog):
 
         await ctx.send(
             f"집계를 시작합니다. (범위: {scope} / {start.date()} ~ {end.date()} "
-            f"/ 채널 수: {len(target_channels)}개)\n"
-            f"메시지 양에 따라 시간이 오래 걸릴 수 있어요..."
+            f"/ 채널 수: {len(target_channels)}개)"
         )
+        status_msg = await ctx.send("수집 준비 중...")
+
+        start_time = time.monotonic()
+        last_edit_time = 0.0
+        EDIT_INTERVAL = 2.0  # 초 단위. 너무 자주 edit하면 레이트리밋에 걸릴 수 있어 최소 간격을 둠
+
+        completed_channels = []   # 완료된 채널 이름 목록
+        channel_durations = []    # 채널별 소요 시간(초) - 평균 내서 예상 시간 계산에 사용
+        total_channel_count = len(target_channels)
+
+        def build_status_text(current_channel_name: str, current_date) -> str:
+            elapsed = int(time.monotonic() - start_time)
+
+            if channel_durations:
+                avg_per_channel = sum(channel_durations) / len(channel_durations)
+                remaining_channels = total_channel_count - len(completed_channels) - 1  # 현재 채널 제외
+                remaining_channels = max(remaining_channels, 0)
+                eta = int(avg_per_channel * remaining_channels)
+                eta_text = f"약 {eta}초"
+            else:
+                eta_text = "계산 중..."
+
+            lines_status = [
+                f"수집 중... `#{current_channel_name}` "
+                f"({len(completed_channels) + 1}/{total_channel_count}번째 채널) / "
+                f"{current_date} 일자 메시지 처리 중",
+                f"경과 시간: {elapsed}초 / 예상 남은 시간: {eta_text}",
+            ]
+            if completed_channels:
+                done_text = ", ".join(f"#{n}" for n in completed_channels)
+                lines_status.append(f"완료된 채널: {done_text}")
+
+            return "\n".join(lines_status)
+
+        async def update_status(channel_name: str, current_date, force: bool = False):
+            nonlocal last_edit_time
+            now_t = time.monotonic()
+            if not force and (now_t - last_edit_time) < EDIT_INTERVAL:
+                return
+            last_edit_time = now_t
+            try:
+                await status_msg.edit(content=build_status_text(channel_name, current_date))
+            except discord.HTTPException:
+                pass
 
         total_weeks = week_index(end - timedelta(seconds=1)) if scope == "이번달" else this_week
         start_for_history = start
@@ -87,10 +109,13 @@ class WeeklyStats(commands.Cog):
         # 4. 채널별로 히스토리 순회
         for channel in target_channels:
             channel_names[channel.id] = channel.name
+            channel_start_time = time.monotonic()
+            await update_status(channel.name, start.date(), force=True)
             try:
                 async for message in channel.history(
                     after=start_for_history, before=end, limit=None, oldest_first=True
                 ):
+                    await update_status(channel.name, message.created_at.date())
                     if message.author.bot:
                         continue
                     wk = week_index(message.created_at)
@@ -102,9 +127,20 @@ class WeeklyStats(commands.Cog):
                             message.author.display_name
                         )
             except discord.Forbidden:
-                continue  # 권한 없는 채널은 스킵
+                pass  # 권한 없는 채널은 스킵
             except discord.HTTPException:
-                continue
+                pass
+            finally:
+                channel_durations.append(time.monotonic() - channel_start_time)
+                completed_channels.append(channel.name)
+
+        elapsed_total = int(time.monotonic() - start_time)
+        try:
+            await status_msg.edit(
+                content=f"수집 완료! (총 소요 시간: {elapsed_total}초) 결과를 정리하고 있어요..."
+            )
+        except discord.HTTPException:
+            pass
 
         # 5. txt 파일로 정리
         lines = []
