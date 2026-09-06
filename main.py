@@ -38,7 +38,7 @@ def get_status_list():
     return [
         "서버 쳐다보기ㅣ{m}명과 함께",
         "서버 {n}개에서 노는 중",
-        "문의는 DM으로!"]
+        "sfx05.xyz에 놀러오세요!"]
 
 status = cycle(get_status_list())
 
