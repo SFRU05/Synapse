@@ -58,7 +58,7 @@ class Leveling(commands.Cog):
         return None
 
     async def _resolve_member_entry(self, guild: discord.Guild, entry: dict, my_id: int) -> dict:
-        """DB에서 나온 {user_id, weekly_count, level, exp, rank} 에 실제 유저 정보(이름/아바타)를 채워 넣는다."""
+        """DB에서 나온 {user_id, level, exp, weekly_count, today_count, rank} 에 실제 유저 정보(이름/아바타)를 채워 넣는다."""
         uid = int(entry["user_id"])
         member = guild.get_member(uid)
         if member is None:
@@ -142,16 +142,28 @@ class Leveling(commands.Cog):
     # ---------------------------------------------------------
     # /순위 명령어
     # ---------------------------------------------------------
-    @app_commands.command(name="순위", description="이번 주 채팅 랭킹 TOP 10과 내 순위를 확인해요.")
-    async def leaderboard(self, interaction: discord.Interaction):
+    @app_commands.command(name="순위", description="서버 랭킹 TOP 10과 내 순위를 확인해요.")
+    @app_commands.describe(기준="정렬 기준을 선택하세요 (기본: 주간 채팅)")
+    @app_commands.choices(기준=[
+        app_commands.Choice(name="주간 채팅", value="weekly"),
+        app_commands.Choice(name="레벨", value="level"),
+    ])
+    async def leaderboard(
+        self,
+        interaction: discord.Interaction,
+        기준: app_commands.Choice[str] | None = None,
+    ):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message("서버 안에서만 사용할 수 있어요.", ephemeral=True)
             return
 
+        criteria = 기준.value if 기준 else "weekly"
         await interaction.response.defer()
 
-        data = await self.db.get_weekly_leaderboard(guild.id, interaction.user.id, top_n=10)
+        data = await self.db.get_weekly_leaderboard(
+            guild.id, interaction.user.id, top_n=10, criteria=criteria
+        )
 
         top_resolved = [
             await self._resolve_member_entry(guild, e, interaction.user.id) for e in data["top"]
@@ -167,6 +179,7 @@ class Leveling(commands.Cog):
             top_entries=top_resolved,
             my_entry=my_resolved,
             my_in_top=my_in_top,
+            criteria=criteria,
         )
 
         file = discord.File(buf, filename="leaderboard.png")

@@ -154,12 +154,16 @@ class LevelDB:
             "weekly": weekly,
         }
 
-    async def get_weekly_leaderboard(self, guild_id: int, user_id: int, top_n: int = 10) -> dict:
+    async def get_weekly_leaderboard(
+        self, guild_id: int, user_id: int, top_n: int = 10, criteria: str = "weekly"
+    ) -> dict:
         """
-        이번 주(일~토) 채팅수 기준 서버 순위.
+        서버 순위 조회.
+        criteria: "weekly"(이번 주 채팅수, 기본값) | "level"(레벨)
+
         반환값: {
-            "top": [{"user_id", "weekly_count", "level", "exp", "rank"}, ...],  # 최대 top_n개
-            "me": {"user_id", "weekly_count", "level", "exp", "rank"},          # rank는 참여자가 없으면 None
+            "top": [{"user_id", "level", "exp", "need", "weekly_count", "rank"}, ...],  # 최대 top_n개
+            "me": {..동일 형식.., "rank": int|None},   # rank는 순위표에 아예 없으면 None
             "total_participants": int
         }
         """
@@ -171,38 +175,55 @@ class LevelDB:
         start_str, end_str = sunday.strftime("%Y-%m-%d"), saturday.strftime("%Y-%m-%d")
 
         async with aiosqlite.connect(self.db_path) as db:
+            # users 테이블에 등록된 모든 유저를 기준으로, 이번 주 채팅수를 LEFT JOIN.
+            # (레벨 기준 정렬 시 이번 주에 채팅을 안 한 유저도 순위에 포함되어야 하므로)
             cur = await db.execute("""
-                WITH week_totals AS (
+                SELECT u.user_id,
+                       u.level,
+                       u.exp,
+                       COALESCE(w.weekly_count, 0) AS weekly_count
+                FROM users u
+                LEFT JOIN (
                     SELECT user_id, SUM(count) AS weekly_count
                     FROM daily_messages
                     WHERE guild_id = ? AND date BETWEEN ? AND ?
                     GROUP BY user_id
-                )
-                SELECT w.user_id, w.weekly_count,
-                       COALESCE(u.level, 0) AS level,
-                       COALESCE(u.exp, 0) AS exp,
-                       RANK() OVER (ORDER BY w.weekly_count DESC) AS rnk
-                FROM week_totals w
-                LEFT JOIN users u ON u.user_id = w.user_id AND u.guild_id = ?
-                ORDER BY rnk ASC
+                ) w ON w.user_id = u.user_id
+                WHERE u.guild_id = ?
             """, (guild_id, start_str, end_str, guild_id))
             rows = await cur.fetchall()
 
-            entries = [
-                {"user_id": r[0], "weekly_count": r[1], "level": r[2], "exp": r[3], "rank": r[4]}
-                for r in rows
-            ]
-            top = entries[:top_n]
-            me = next((e for e in entries if e["user_id"] == user_id), None)
+        entries = [
+            {
+                "user_id": r[0], "level": r[1], "exp": r[2],
+                "need": required_exp(r[1]), "weekly_count": r[3],
+            }
+            for r in rows
+        ]
 
-            if me is None:
-                # 이번 주 채팅 기록이 없는 유저 -> 레벨 정보만 조회
-                cur2 = await db.execute(
-                    "SELECT level, exp FROM users WHERE user_id=? AND guild_id=?",
-                    (user_id, guild_id)
-                )
-                r2 = await cur2.fetchone()
-                level, exp = r2 if r2 else (0, 0)
-                me = {"user_id": user_id, "weekly_count": 0, "level": level, "exp": exp, "rank": None}
+        # 정렬 기준별 key 함수. 레벨은 동점자를 exp로 한 번 더 구분.
+        if criteria == "level":
+            sort_key = lambda e: (e["level"], e["exp"])
+        else:  # "weekly" (기본값)
+            sort_key = lambda e: (e["weekly_count"],)
+
+        entries.sort(key=sort_key, reverse=True)
+
+        # 동점자는 같은 순위를 받고, 다음 순위는 그만큼 건너뛰는 표준 랭킹 방식 (SQL RANK()와 동일)
+        prev_key, prev_rank = None, 0
+        for idx, e in enumerate(entries, start=1):
+            k = sort_key(e)
+            if k == prev_key:
+                e["rank"] = prev_rank
+            else:
+                e["rank"] = idx
+                prev_rank = idx
+                prev_key = k
+
+        top = entries[:top_n]
+        me = next((e for e in entries if e["user_id"] == user_id), None)
+        if me is None:
+            # users 테이블에도 없는 유저 (채팅 기록이 전혀 없음)
+            me = {"user_id": user_id, "level": 0, "exp": 0, "need": required_exp(0), "weekly_count": 0, "rank": None}
 
         return {"top": top, "me": me, "total_participants": len(entries)}
