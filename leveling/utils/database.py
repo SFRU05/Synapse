@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 DB_PATH = "data/leveling.db"
 
-# 쿨타임(초): 이 시간 안에 여러 메시지를 보내도 exp는 한 번만 지급됨 (도배 방지)
 EXP_COOLDOWN = 60
 # 메시지 1건당 지급되는 exp 범위
 EXP_MIN, EXP_MAX = 15, 25
@@ -56,7 +55,6 @@ class LevelDB:
         now = time.time()
 
         async with aiosqlite.connect(self.db_path) as db:
-            # 1) 일별 채팅수 +1 (upsert)
             await db.execute("""
                 INSERT INTO daily_messages (user_id, guild_id, date, count)
                 VALUES (?, ?, ?, 1)
@@ -64,7 +62,6 @@ class LevelDB:
                 DO UPDATE SET count = count + 1
             """, (user_id, guild_id, today))
 
-            # 2) 유저 row 없으면 생성
             await db.execute("""
                 INSERT OR IGNORE INTO users (user_id, guild_id, level, exp, total_messages, last_message_time)
                 VALUES (?, ?, 0, 0, 0, 0)
@@ -85,7 +82,6 @@ class LevelDB:
                 exp += gained_exp
                 last_time = now
 
-                # 레벨업 처리 (한 번에 여러 레벨 오를 수도 있으니 while)
                 while exp >= required_exp(level):
                     exp -= required_exp(level)
                     level += 1
@@ -102,13 +98,6 @@ class LevelDB:
         return {"leveled_up": leveled_up, "level": level, "gained_exp": gained_exp}
 
     async def get_stats(self, user_id: int, guild_id: int) -> dict:
-        """
-        /레벨 명령어에서 쓸 통계 반환:
-        - level, exp, need(다음 레벨까지 필요 exp)
-        - total_messages
-        - today_count
-        - weekly: 이번 주 일~토 [(날짜, 요일라벨, count), ...] (항상 일요일부터 토요일 순서 고정)
-        """
         user_id, guild_id = str(user_id), str(guild_id)
 
         async with aiosqlite.connect(self.db_path) as db:
@@ -123,12 +112,25 @@ class LevelDB:
             weekly = []
             today_count = 0
             week_total = 0
+            last_week_total = 0
 
             now = datetime.now()
             today_str = now.strftime("%Y-%m-%d")
-            # 이번 주 일요일 구하기 (Python weekday(): 월=0 ... 일=6)
             days_since_sunday = (now.weekday() + 1) % 7
             sunday = now - timedelta(days=days_since_sunday)
+            last_sunday = sunday - timedelta(days=7)
+            last_saturday = sunday - timedelta(days=1)
+            last_start_str = last_sunday.strftime("%Y-%m-%d")
+            last_end_str = last_saturday.strftime("%Y-%m-%d")
+
+            cur2 = await db.execute(
+                """SELECT COALESCE(SUM(count), 0)
+                   FROM daily_messages
+                   WHERE user_id=? AND guild_id=? AND date BETWEEN ? AND ?""",
+                (user_id, guild_id, last_start_str, last_end_str)
+            )
+            last_week_row = await cur2.fetchone()
+            last_week_total = last_week_row[0] if last_week_row else 0
 
             for i in range(7):  # 일요일 -> 토요일 고정 순서
                 day = sunday + timedelta(days=i)
@@ -151,6 +153,7 @@ class LevelDB:
             "total_messages": total_messages,
             "today_count": today_count,
             "week_total": week_total,
+            "last_week_total": last_week_total,
             "weekly": weekly,
         }
 
@@ -201,7 +204,6 @@ class LevelDB:
             for r in rows
         ]
 
-        # 정렬 기준별 key 함수. 레벨은 동점자를 exp로 한 번 더 구분.
         if criteria == "level":
             sort_key = lambda e: (e["level"], e["exp"])
         else:  # "weekly" (기본값)
@@ -209,7 +211,6 @@ class LevelDB:
 
         entries.sort(key=sort_key, reverse=True)
 
-        # 동점자는 같은 순위를 받고, 다음 순위는 그만큼 건너뛰는 표준 랭킹 방식 (SQL RANK()와 동일)
         prev_key, prev_rank = None, 0
         for idx, e in enumerate(entries, start=1):
             k = sort_key(e)
@@ -223,7 +224,6 @@ class LevelDB:
         top = entries[:top_n]
         me = next((e for e in entries if e["user_id"] == user_id), None)
         if me is None:
-            # users 테이블에도 없는 유저 (채팅 기록이 전혀 없음)
             me = {"user_id": user_id, "level": 0, "exp": 0, "need": required_exp(0), "weekly_count": 0, "rank": None}
 
         return {"top": top, "me": me, "total_participants": len(entries)}

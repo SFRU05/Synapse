@@ -1,7 +1,3 @@
-"""
-레벨 카드 이미지 생성 모듈 (Pillow)
-generate_rank_card()가 완성된 카드 이미지를 BytesIO로 반환합니다.
-"""
 import io
 from datetime import datetime
 from PIL import Image, ImageDraw
@@ -21,6 +17,7 @@ TEXT_SUB = (170, 173, 182)
 
 def generate_rank_card(
     display_name: str,
+    username: str,
     avatar_bytes: bytes,
     level: int,
     exp: int,
@@ -28,7 +25,8 @@ def generate_rank_card(
     total_messages: int,
     today_count: int,
     week_total: int,
-    weekly: list,  # [(date_str, label, count), ...] 7개, 일~토 고정 순서
+    last_week_total: int,
+    weekly: list,
     guild_name: str | None = None,
     guild_icon_bytes: bytes | None = None,
 ) -> io.BytesIO:
@@ -70,12 +68,24 @@ def generate_rank_card(
     font_small = load_font(15)
 
     text_x = ax + avatar_size + 30
-    name_max_width = 560 - text_x - 20  # 통계 박스 시작 지점(560) 전까지만 사용
+    name_area_width = 560 - text_x - 20  # 통계 박스 시작 지점(560) 전까지만 사용
+
+    # 서버 닉네임과 레벨은 아바타 오른쪽에 표시
     font_name, fitted_name = fit_font_and_text(
-        draw, display_name, name_max_width, base_size=30, bold=True, min_size=16
+        draw, display_name, name_area_width, base_size=30, bold=True, min_size=16
     )
     draw.text((text_x, ay - 4), fitted_name, font=font_name, fill=TEXT_MAIN)
     draw.text((text_x, ay + 40), f"LEVEL {level}", font=font_level, fill=ACCENT)
+
+    # 실제 Discord 사용자명은 프로필(아바타) 바로 아래에 표시
+    username_text = f"@{username}"
+    font_username, fitted_username = fit_font_and_text(
+        draw, username_text, avatar_size + 12, base_size=14, bold=False, min_size=10
+    )
+    username_width = draw.textlength(fitted_username, font=font_username)
+    username_x = ax + (avatar_size - username_width) / 2
+    username_y = ay + avatar_size + 7
+    draw.text((username_x, username_y), fitted_username, font=font_username, fill=TEXT_SUB)
 
     # ---- exp 진행바 ----
     bar_x, bar_y = text_x, ay + 84
@@ -89,20 +99,23 @@ def generate_rank_card(
         )
     draw.text((bar_x, bar_y + bar_h + 6), f"{exp:,} / {need:,} EXP", font=font_small, fill=TEXT_SUB)
 
-    # ---- 오늘 / 이번주 / 누적 통계 박스 ----
+    # ---- 오늘 / 이번주 / 지난주 / 누적 통계 박스 ----
     stats = [
         ("오늘 채팅", f"{today_count:,}"),
         ("이번주 채팅", f"{week_total:,}"),
+        ("지난주 채팅", f"{last_week_total:,}"),
         ("누적 채팅", f"{total_messages:,}"),
     ]
-    stats_area_right = WIDTH - 40
-    stats_area_left = 560
-    box_w = (stats_area_right - stats_area_left) // len(stats)
+    stats_area_right = WIDTH - 24
+    stats_area_left = 540
+    box_w = (stats_area_right - stats_area_left) / len(stats)
     box_y = HEADER_H + 40
     for i, (label, value) in enumerate(stats):
-        bx = stats_area_left + i * box_w
-        draw.text((bx, box_y), value, font=font_stat_num, fill=TEXT_MAIN)
-        draw.text((bx, box_y + 38), label, font=font_stat_label, fill=TEXT_SUB)
+        bx = int(stats_area_left + i * box_w)
+        # 통계 영역에 맞춰 숫자 크기를 조정해 기존 카드 스타일을 유지
+        stat_font = load_font(25, bold=True)
+        draw.text((bx, box_y), value, font=stat_font, fill=TEXT_MAIN)
+        draw.text((bx, box_y + 38), label, font=load_font(14), fill=TEXT_SUB)
 
     # ---- 주간 채팅량 바 차트 (일~토 고정 순서) ----
     chart_x0, chart_y0 = 36, HEADER_H + 188

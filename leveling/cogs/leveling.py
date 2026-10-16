@@ -83,9 +83,6 @@ class Leveling(commands.Cog):
             "is_me": (uid == my_id),
         }
 
-    # ---------------------------------------------------------
-    # 메시지 감지 -> 채팅량 기록 + exp 지급 + (설정 시) DM 레벨업 알림
-    # ---------------------------------------------------------
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot:
@@ -124,6 +121,7 @@ class Leveling(commands.Cog):
 
         buf = generate_rank_card(
             display_name=target.display_name,
+            username=target.name,
             avatar_bytes=avatar_bytes,
             level=stats["level"],
             exp=stats["exp"],
@@ -131,6 +129,7 @@ class Leveling(commands.Cog):
             total_messages=stats["total_messages"],
             today_count=stats["today_count"],
             week_total=stats["week_total"],
+            last_week_total=stats["last_week_total"],
             weekly=stats["weekly"],
             guild_name=guild.name if guild else None,
             guild_icon_bytes=guild_icon_bytes,
