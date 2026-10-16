@@ -27,7 +27,7 @@ def generate_rank_card(
     week_total: int,
     last_week_total: int,
     weekly_rank: int | None,
-    weekly: list,  # [(date_str, label, count), ...] 7개, 일~토 고정 순서
+    weekly: list,
     guild_name: str | None = None,
     guild_icon_bytes: bytes | None = None,
 ) -> io.BytesIO:
@@ -73,14 +73,20 @@ def generate_rank_card(
         pill_x = ax + (avatar_size - pill_w) // 2
         pill_y = ay - pill_h - 5
 
-        # 순위 배지만 3배 해상도로 그린 뒤 LANCZOS로 축소하여 가장자리를 부드럽게 처리
         badge_hi = Image.new("RGBA", (WIDTH * scale, HEIGHT * scale), (0, 0, 0, 0))
         badge_draw = ImageDraw.Draw(badge_hi)
+        rank_colors = {
+            1: (245, 196, 66),   # 금색
+            2: (192, 201, 214), # 은색
+            3: (190, 120, 70),  # 동색
+        }
+        badge_color = rank_colors.get(weekly_rank, BAR_BG)
+        rank_text_color = (38, 32, 24) if weekly_rank in rank_colors else TEXT_MAIN
         badge_draw.rounded_rectangle(
             [pill_x * scale, pill_y * scale,
              (pill_x + pill_w) * scale, (pill_y + pill_h) * scale],
             radius=pill_h * scale // 2,
-            fill=ACCENT if weekly_rank <= 3 else BAR_BG,
+            fill=badge_color,
         )
         rank_font_hi = load_font(14 * scale, bold=True)
         text_w_hi = badge_draw.textlength(rank_text, font=rank_font_hi)
@@ -88,7 +94,7 @@ def generate_rank_card(
         text_h_hi = bbox[3] - bbox[1]
         text_x_hi = (pill_x + pill_w / 2) * scale - text_w_hi / 2
         text_y_hi = (pill_y + pill_h / 2) * scale - text_h_hi / 2 - bbox[1]
-        badge_draw.text((text_x_hi, text_y_hi), rank_text, font=rank_font_hi, fill=TEXT_MAIN)
+        badge_draw.text((text_x_hi, text_y_hi), rank_text, font=rank_font_hi, fill=rank_text_color)
         badge = badge_hi.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
         img.paste(badge, (0, 0), badge)
 
@@ -99,7 +105,7 @@ def generate_rank_card(
     font_small = load_font(15)
 
     text_x = ax + avatar_size + 30
-    name_area_width = 560 - text_x - 20  # 통계 박스 시작 지점(560) 전까지만 사용
+    name_area_width = 560 - text_x - 20
 
     # 서버 닉네임과 레벨은 아바타 오른쪽에 표시
     font_name, fitted_name = fit_font_and_text(
