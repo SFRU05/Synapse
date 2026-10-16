@@ -26,7 +26,8 @@ def generate_rank_card(
     today_count: int,
     week_total: int,
     last_week_total: int,
-    weekly: list,
+    weekly_rank: int | None,
+    weekly: list,  # [(date_str, label, count), ...] 7개, 일~토 고정 순서
     guild_name: str | None = None,
     guild_icon_bytes: bytes | None = None,
 ) -> io.BytesIO:
@@ -60,6 +61,36 @@ def generate_rank_card(
     ax, ay = 36, HEADER_H + 36
     img.paste(avatar, (ax, ay), avatar)
     draw_smooth_ring(img, (ax - 3, ay - 3, ax + avatar_size + 3, ay + avatar_size + 3), ACCENT, 4)
+
+    # ---- 주간 채팅 순위: 작은 크기로, 고해상도 렌더링 후 축소해 안티앨리어싱 ----
+    if weekly_rank is not None:
+        rank_text = f"#{weekly_rank}"
+        scale = 3
+        rank_font = load_font(14 * scale, bold=True)
+        rank_text_w = draw.textlength(rank_text, font=load_font(14, bold=True))
+        pill_w = max(42, int(rank_text_w + 16))
+        pill_h = 22
+        pill_x = ax + (avatar_size - pill_w) // 2
+        pill_y = ay - pill_h - 5
+
+        # 순위 배지만 3배 해상도로 그린 뒤 LANCZOS로 축소하여 가장자리를 부드럽게 처리
+        badge_hi = Image.new("RGBA", (WIDTH * scale, HEIGHT * scale), (0, 0, 0, 0))
+        badge_draw = ImageDraw.Draw(badge_hi)
+        badge_draw.rounded_rectangle(
+            [pill_x * scale, pill_y * scale,
+             (pill_x + pill_w) * scale, (pill_y + pill_h) * scale],
+            radius=pill_h * scale // 2,
+            fill=ACCENT if weekly_rank <= 3 else BAR_BG,
+        )
+        rank_font_hi = load_font(14 * scale, bold=True)
+        text_w_hi = badge_draw.textlength(rank_text, font=rank_font_hi)
+        bbox = badge_draw.textbbox((0, 0), rank_text, font=rank_font_hi)
+        text_h_hi = bbox[3] - bbox[1]
+        text_x_hi = (pill_x + pill_w / 2) * scale - text_w_hi / 2
+        text_y_hi = (pill_y + pill_h / 2) * scale - text_h_hi / 2 - bbox[1]
+        badge_draw.text((text_x_hi, text_y_hi), rank_text, font=rank_font_hi, fill=TEXT_MAIN)
+        badge = badge_hi.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
+        img.paste(badge, (0, 0), badge)
 
     # ---- 이름 / 레벨 ----
     font_level = load_font(26, bold=True)

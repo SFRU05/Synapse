@@ -29,7 +29,6 @@ class Leveling(commands.Cog):
         return {}
 
     def save_settings(self):
-        """현재 알림 설정을 JSON 파일에 저장합니다."""
         folder = os.path.dirname(SETTINGS_FILE)
         if folder:
             os.makedirs(folder, exist_ok=True)
@@ -58,7 +57,6 @@ class Leveling(commands.Cog):
         return None
 
     async def _resolve_member_entry(self, guild: discord.Guild, entry: dict, my_id: int) -> dict:
-        """DB에서 나온 {user_id, level, exp, weekly_count, today_count, rank} 에 실제 유저 정보(이름/아바타)를 채워 넣는다."""
         uid = int(entry["user_id"])
         member = guild.get_member(uid)
         if member is None:
@@ -83,6 +81,9 @@ class Leveling(commands.Cog):
             "is_me": (uid == my_id),
         }
 
+    # ---------------------------------------------------------
+    # 메시지 감지 -> 채팅량 기록 + exp 지급 + (설정 시) DM 레벨업 알림
+    # ---------------------------------------------------------
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot:
@@ -113,6 +114,13 @@ class Leveling(commands.Cog):
         await interaction.response.defer()
 
         stats = await self.db.get_stats(target.id, interaction.guild_id)
+        weekly_rank = None
+        if interaction.guild_id is not None:
+            leaderboard_data = await self.db.get_weekly_leaderboard(
+                interaction.guild_id, target.id, top_n=0, criteria="weekly"
+            )
+            weekly_rank = leaderboard_data["me"].get("rank")
+
         avatar_bytes = await self._fetch_bytes(
             str(target.display_avatar.replace(size=256, format="png").url)
         )
@@ -130,6 +138,7 @@ class Leveling(commands.Cog):
             today_count=stats["today_count"],
             week_total=stats["week_total"],
             last_week_total=stats["last_week_total"],
+            weekly_rank=weekly_rank,
             weekly=stats["weekly"],
             guild_name=guild.name if guild else None,
             guild_icon_bytes=guild_icon_bytes,
@@ -190,7 +199,6 @@ class Leveling(commands.Cog):
     @app_commands.command(name="레벨알림", description="레벨업 시 DM으로 알림을 받을지 여부를 설정해요.")
     async def toggle_notification(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
-        # 현재 상태 반전 (없으면 기본값 False였으므로 True로 변경)
         current_state = self.notif_settings.get(user_id, False)
         new_state = not current_state
 
