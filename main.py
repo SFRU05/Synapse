@@ -30,6 +30,7 @@ from discord_logs.logger import (
     log_message_delete, log_message_edit, log_member_join, log_member_remove,
     log_member_role_update, log_role_update,
     log_channel_create, log_channel_delete, log_channel_update, log_role_create, log_role_delete,
+    log_member_ban, log_member_unban
 )
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all(), help_command=None) # 접두사
@@ -134,7 +135,6 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_member_update(before, after):
-    # 역할 변경만 감지 (상태, 닉네임 등은 무시)
     if getattr(before, "roles", None) and getattr(after, "roles", None):
         if set(before.roles) != set(after.roles):
             await log_member_role_update(before, after)
@@ -170,6 +170,27 @@ async def on_guild_role_create(role):
 @bot.event
 async def on_guild_role_delete(role):
     await log_role_delete(role)
+
+@bot.event
+async def on_member_ban(
+    guild: discord.Guild,
+    user: discord.User
+):
+    await log_member_ban(
+        guild,
+        user
+    )
+
+
+@bot.event
+async def on_member_unban(
+    guild: discord.Guild,
+    user: discord.User
+):
+    await log_member_unban(
+        guild,
+        user
+    )
 
 class BotIntroView(discord.ui.View):
     def __init__(self):
