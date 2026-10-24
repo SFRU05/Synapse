@@ -95,6 +95,7 @@ async def on_ready():
     await bot.load_extension("server_analyze")
     await bot.load_extension("weather")
     await bot.load_extension("animation")
+    await bot.load_extension("voice_channel")
     change_status.start()
 
     await bot.tree.sync()  # 슬래시 명령어 동기화
